@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package hello;
+
+option go_package = "tubes.sister/raft/hello";
+
+service Hello {
+  rpc SayHello(HelloMsg) returns (HelloRes) {}
+}
+
+message HelloMsg {
+  string name = 1;
+}
+
+message HelloRes {
+  string message = 1;
+}
