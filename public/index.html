@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GRPC Web Client</title>
+</head>
+
+<body>
+  <h1>Halo</h1>
+  <p id="result-text"></p>
+
+  <input type="text" id="msg-input" />
+  <button id="submit-btn">Submit</button>
+</body>
+
+<script>
+  const inputEl = document.getElementById('msg-input')
+  const btnEl = document.getElementById('submit-btn')
+  const resultTextEl = document.getElementById('result-text')
+
+  btnEl.addEventListener('click', async () => {
+    const clientUrl = "http://localhost:3000"
+    const res = await fetch(clientUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ message: inputEl.value })
+    })
+    const resJson = await res.json()
+
+    resultTextEl.innerText = resJson.result
+  })
+</script>
+</html>
