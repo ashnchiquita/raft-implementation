@@ -5,14 +5,14 @@ import (
 )
 
 type RequestVoteArgs struct {
-	term 	   int
-	candidateId server.Address
+	term         int
+	candidateId  server.Address
 	lastLogIndex int
 	lastLogTerm  int
 }
 
 type RequestVoteReply struct {
-	term 	  int
+	term        int
 	voteGranted bool
 }
 
