@@ -15,10 +15,11 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"tubes.sister/raft/hello"
+	"tubes.sister/raft/server"
 )
 
 var (
-	server     = flag.Bool("is_server", true, "GRPC Server or Client")
+	serverr    = flag.Bool("is_server", true, "GRPC Server or Client")
 	port       = flag.Int("port", 50051, "GRPC Server Port")
 	serverAddr = flag.String("server_address", "localhost:50051", "GRPC Server Address")
 	clientPort = flag.Int("client_port", 3000, "HTTP Client Port")
@@ -35,7 +36,7 @@ type ClientRes struct {
 func main() {
 	flag.Parse()
 
-	if *server {
+	if *serverr {
 		lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", *port))
 
 		if err != nil {
@@ -44,7 +45,10 @@ func main() {
 
 		var opts []grpc.ServerOption
 		grpcServer := grpc.NewServer(opts...)
-		hello.RegisterHelloServer(grpcServer, &hello.HelloServerImpl{})
+
+		helloServer := hello.NewHelloServerImpl(server.Address{IP: "localhost", Port: fmt.Sprintf("%d", *port)})
+
+		hello.RegisterHelloServer(grpcServer, helloServer)
 
 		log.Printf("Server started at port %d", *port)
 		grpcServer.Serve(lis)
@@ -88,6 +92,26 @@ func main() {
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
+		})
+
+		router.Post("/addNode", func(w http.ResponseWriter, r *http.Request) {
+			var req hello.AddNodeRequest
+
+			err := json.NewDecoder(r.Body).Decode(&req)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+
+			// Kirim request AddNode ke server
+			_, err = client.AddNode(context.Background(), &req)
+			if err != nil {
+				log.Printf("Failed to call AddNode: %v", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
 		})
 
 		log.Printf("Client started at port %d", *clientPort)
