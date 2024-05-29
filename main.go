@@ -14,6 +14,8 @@ import (
 	"github.com/go-chi/cors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	app_http "tubes.sister/raft/client/http/application"
+	raft_http "tubes.sister/raft/client/http/raft"
 	"tubes.sister/raft/hello"
 	"tubes.sister/raft/server"
 )
@@ -112,6 +114,24 @@ func main() {
 			}
 
 			w.WriteHeader(http.StatusOK)
+		})
+
+		// Application Router
+		router.Route("/app", func(r chi.Router) {
+			r.Get("/ping", app_http.Ping)
+			r.Get("/{key}", app_http.Get)
+			r.Put("/", app_http.Set)
+			r.Get("/{key}/strlen", app_http.Strlen)
+			r.Delete("/{key}", app_http.Del)
+			r.Patch("/", app_http.Append)
+
+			r.Get("/", app_http.GetAll)
+			r.Delete("/", app_http.DelAll)
+		})
+
+		// Raft Router
+		router.Route("/raft", func(r chi.Router) {
+			r.Get("/get-statuses", raft_http.GetStatuses)
 		})
 
 		log.Printf("Client started at port %d", *clientPort)

@@ -1,6 +1,6 @@
 package server
 
 type Address struct {
-	IP   string
-	Port string
+	IP   string `json:"ip"`
+	Port string `json:"port"`
 }
