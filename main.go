@@ -118,7 +118,6 @@ func main() {
 
 		// Application Router
 		router.Route("/app", func(r chi.Router) {
-			r.Get("/ping", app_http.Ping)
 			r.Get("/{key}", app_http.Get)
 			r.Put("/", app_http.Set)
 			r.Get("/{key}/strlen", app_http.Strlen)
@@ -131,6 +130,7 @@ func main() {
 
 		// Raft Router
 		router.Route("/raft", func(r chi.Router) {
+			r.Get("/ping", raft_http.Ping)
 			r.Get("/get-statuses", raft_http.GetStatuses)
 		})
 

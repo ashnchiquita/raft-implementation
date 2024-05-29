@@ -13,10 +13,6 @@ func NewApplication() *Application {
 }
 
 // METHODS
-func (a *Application) Ping() string {
-	return "PONG"
-}
-
 func (a *Application) Get(key string) (string, bool) {
 	elem, ok := a.data[key]
 	return elem, ok

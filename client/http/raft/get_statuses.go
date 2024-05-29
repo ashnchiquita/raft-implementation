@@ -25,14 +25,14 @@ func GetStatuses(w http.ResponseWriter, r *http.Request) {
 	dummy := []NodeStatus{
 		{
 			Address: server.Address{
-				IP:   "127.0.0.1",
+				IP:   "127.0.0.1 (TODO: get from server)",
 				Port: "8080",
 			},
 			Alive: true,
 		},
 		{
 			Address: server.Address{
-				IP:   "127.0.0.1",
+				IP:   "127.0.0.1 (TODO: get from server)",
 				Port: "8081",
 			},
 			Alive: false,

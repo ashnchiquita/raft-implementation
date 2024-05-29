@@ -1,4 +1,4 @@
-package application
+package raft
 
 import (
 	"encoding/json"
@@ -13,6 +13,8 @@ type PingResponse struct {
 }
 
 func Ping(w http.ResponseWriter, r *http.Request) {
+	// TODO: ping server
+
 	resp := PingResponse{
 		ResponseMessage: utils.ResponseMessage{
 			Message: "success",
