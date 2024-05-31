@@ -131,7 +131,6 @@ func main() {
 		// Raft Router
 		router.Route("/raft", func(r chi.Router) {
 			r.Get("/ping", raft_http.Ping)
-			r.Get("/get-statuses", raft_http.GetStatuses)
 		})
 
 		log.Printf("Client started at port %d", *clientPort)
