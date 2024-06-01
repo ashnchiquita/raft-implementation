@@ -1,139 +1,47 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
 	"flag"
-	"fmt"
 	"log"
-	"net"
-	"net/http"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/cors"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	app_http "tubes.sister/raft/client/http/application"
-	raft_http "tubes.sister/raft/client/http/raft"
-	"tubes.sister/raft/hello"
-	"tubes.sister/raft/server"
+	"tubes.sister/raft/client/http"
+	"tubes.sister/raft/client/terminal"
 )
 
 var (
-	serverr    = flag.Bool("is_server", true, "GRPC Server or Client")
-	port       = flag.Int("port", 50051, "GRPC Server Port")
-	serverAddr = flag.String("server_address", "localhost:50051", "GRPC Server Address")
-	clientPort = flag.Int("client_port", 3000, "HTTP Client Port")
+	programType = "server"
+	port       	= flag.Int("port", 50051, "GRPC Server Port")
+	// serverAddr 	= flag.String("server_address", "localhost:50051", "GRPC Server Address")
+	clientPort	= flag.Int("client_port", 3000, "HTTP Client Port")
 )
 
-type ClientRequest struct {
-	Message string `json:"message"`
-}
-
-type ClientRes struct {
-	Result string `json:"result"`
-}
-
 func main() {
-	flag.Parse()
+	parseFlags()
 
-	if *serverr {
-		lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", *port))
+	switch programType {
+		case "terminal-client":
+			log.Println("Starting terminal client...")
+			terminal.StartTerminalClient(*clientPort, *port)
 
-		if err != nil {
-			log.Fatalf("Failed to listen: %v", err)
-		}
+		case "web-client":
+			log.Println("Starting web client...")
+			http.StartHTTPClient(*clientPort, *port)
 
-		var opts []grpc.ServerOption
-		grpcServer := grpc.NewServer(opts...)
+		default: // server
+			log.Println("Starting server...")
 
-		helloServer := hello.NewHelloServerImpl(server.Address{IP: "localhost", Port: fmt.Sprintf("%d", *port)})
-
-		hello.RegisterHelloServer(grpcServer, helloServer)
-
-		log.Printf("Server started at port %d", *port)
-		grpcServer.Serve(lis)
-	} else {
-		var opts []grpc.DialOption
-		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-
-		conn, err := grpc.Dial(*serverAddr, opts...)
-		if err != nil {
-			log.Fatalf("Failed to dial server: %v", err)
-		}
-
-		defer conn.Close()
-
-		client := hello.NewHelloClient(conn)
-
-		router := chi.NewRouter()
-		router.Use(middleware.Logger)
-		router.Use(cors.Handler(cors.Options{
-			AllowedOrigins: []string{"*"},
-			AllowedMethods: []string{"POST"},
-		}))
-
-		router.Post("/", func(w http.ResponseWriter, r *http.Request) {
-			var req ClientRequest
-
-			err := json.NewDecoder(r.Body).Decode(&req)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-			}
-
-			response, err := client.SayHello(context.Background(), &hello.HelloMsg{Name: req.Message})
-			if err != nil {
-				log.Printf("Failed to call SayHello: %v", err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-
-			res := &ClientRes{Result: response.Message}
-			w.Header().Set("Content-Type", "application/json")
-			err = json.NewEncoder(w).Encode(res)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-		})
-
-		router.Post("/addNode", func(w http.ResponseWriter, r *http.Request) {
-			var req hello.AddNodeRequest
-
-			err := json.NewDecoder(r.Body).Decode(&req)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-
-			// Kirim request AddNode ke server
-			_, err = client.AddNode(context.Background(), &req)
-			if err != nil {
-				log.Printf("Failed to call AddNode: %v", err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			w.WriteHeader(http.StatusOK)
-		})
-
-		// Application Router
-		router.Route("/app", func(r chi.Router) {
-			r.Get("/{key}", app_http.Get)
-			r.Put("/", app_http.Set)
-			r.Get("/{key}/strlen", app_http.Strlen)
-			r.Delete("/{key}", app_http.Del)
-			r.Patch("/", app_http.Append)
-
-			r.Get("/", app_http.GetAll)
-			r.Delete("/", app_http.DelAll)
-		})
-
-		// Raft Router
-		router.Route("/raft", func(r chi.Router) {
-			r.Get("/ping", raft_http.Ping)
-		})
-
-		log.Printf("Client started at port %d", *clientPort)
-		http.ListenAndServe(fmt.Sprintf(":%d", *clientPort), router)
+			// TODO: start server
 	}
+}
+
+func parseFlags() {
+	flag.Func("type", "'server' (default) or 'terminal-client' or 'web-client'", func(flagValue string) error {
+		if flagValue == "terminal-client" || flagValue == "web-client" {
+			programType = flagValue
+		}
+
+		return nil
+	})
+
+	flag.Parse()
 }

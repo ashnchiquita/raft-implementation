@@ -1,0 +1,5 @@
+# ignore all files except generated .pb.go files
+
+*
+!.gitignore
+!*.pb.go

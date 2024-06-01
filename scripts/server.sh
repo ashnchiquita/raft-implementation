@@ -1,1 +1,3 @@
-go run main.go -is_server=true -port=5000
+: ${MASTER_PORT:=5000}
+
+go run main.go -type=server -port=$MASTER_PORT
