@@ -3,9 +3,14 @@ package main
 import (
 	"flag"
 	"log"
+	"time"
 
 	"tubes.sister/raft/client/http"
+
 	"tubes.sister/raft/client/terminal"
+	"tubes.sister/raft/node/application"
+	"tubes.sister/raft/node/core"
+	"tubes.sister/raft/node/data"
 )
 
 var (
@@ -33,7 +38,15 @@ func main() {
 
 	default: // server
 		log.Println("Starting server...")
-		// TODO: start server
+
+		addr := data.NewAddress("localhost", *port)
+		app := application.NewApplication()
+		raftNode := core.NewRaftNode(*addr, *app)
+
+		go raftNode.StartServer()
+
+		log.Println("Server started")
+		time.Sleep(10 * time.Second)
 	}
 }
 

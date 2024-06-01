@@ -1,9 +1,9 @@
-package core
+package data
 
 type NodeType int
 
 const (
-	LEADER 		NodeType = iota + 1
+	LEADER NodeType = iota + 1
 	CANDIDATE
 	FOLLOWER
 )

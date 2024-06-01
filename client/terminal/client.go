@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -9,6 +10,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	gRPC "tubes.sister/raft/gRPC/node/core"
 )
 
 type TerminalClient struct {
@@ -24,6 +26,9 @@ func NewTerminalClient(clientPort int, serverAddr string) *TerminalClient {
 	if err != nil {
 		log.Fatalf("Failed to dial server: %v", err)
 	}
+
+	client := gRPC.NewHelloClient(conn)
+	client.SayHello(context.Background(), &gRPC.HelloMsg{Name: "james"})
 
 	return &TerminalClient{conn: conn}
 }
