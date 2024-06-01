@@ -7,12 +7,12 @@ import (
 )
 
 type AppendEntriesArgs struct {
-	term         int             // leader’s term
-	leaderId     data.Address    // so follower can redirect clients
-	prevLogIndex int             // index of log entry immediately preceding new ones
-	prevLogTerm  int             // term of prevLogIndex entry
-	entries      []data.LogEntry // log entries to store (empty for heartbeat; may send more than one for efficiency)
-	leaderCommit int             // leader’s commitIndex
+	term          int             // leader’s term
+	leaderAddress data.Address    // so follower can redirect clients
+	prevLogIndex  int             // index of log entry immediately preceding new ones
+	prevLogTerm   int             // term of prevLogIndex entry
+	entries       []data.LogEntry // log entries to store (empty for heartbeat; may send more than one for efficiency)
+	leaderCommit  int             // leader’s commitIndex
 }
 
 type AppendEntriesReply struct {
@@ -76,8 +76,9 @@ func (rn *RaftNode) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesR
 		rn.Volatile.CommitIndex = i
 	}
 
-	// TODO set leader address in node
 	reply.term = rn.Persistence.CurrentTerm
+	rn.Volatile.LeaderAddress.IP = args.leaderAddress.IP
+	rn.Volatile.LeaderAddress.Port = args.leaderAddress.Port
 
 	return nil
 }
