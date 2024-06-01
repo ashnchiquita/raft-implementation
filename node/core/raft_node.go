@@ -6,6 +6,8 @@ import (
 	gRPC "tubes.sister/raft/gRPC/node/core"
 	"tubes.sister/raft/node/application"
 	"tubes.sister/raft/node/data"
+
+	gRPC "tubes.sister/raft/gRPC/node/core"
 )
 
 type RaftNode struct {
@@ -20,6 +22,9 @@ type RaftNode struct {
 
 	// App
 	Application application.Application
+
+	// RPCs
+	gRPC.UnimplementedAppendEntriesServiceServer
 }
 
 func NewRaftNode(address data.Address, app application.Application) *RaftNode {
