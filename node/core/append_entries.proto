@@ -13,7 +13,7 @@ message AppendEntriesArgs {
 
   message LeaderAddress {
     string ip = 1;
-    string port = 2;
+    int32 port = 2;
   }
   LeaderAddress leaderAddress = 2;
 

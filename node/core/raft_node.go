@@ -6,8 +6,6 @@ import (
 	gRPC "tubes.sister/raft/gRPC/node/core"
 	"tubes.sister/raft/node/application"
 	"tubes.sister/raft/node/data"
-
-	gRPC "tubes.sister/raft/gRPC/node/core"
 )
 
 type RaftNode struct {
