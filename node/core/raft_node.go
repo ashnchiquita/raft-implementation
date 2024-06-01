@@ -5,12 +5,14 @@ import (
 
 	"tubes.sister/raft/node/application"
 	"tubes.sister/raft/node/data"
+
+	pb "tubes.sister/raft/gRPC"
 )
 
 type RaftNode struct {
 	// Self data
-	Address 		data.Address
-	Type 				NodeType
+	Address data.Address
+	Type    NodeType
 
 	// State
 	Persistence data.Persistence
@@ -20,20 +22,23 @@ type RaftNode struct {
 	Application application.Application
 
 	// Timer
-	Timeout		 	time.Duration
+	Timeout time.Duration
+
+	// RPCs
+	pb.UnimplementedAppendEntriesServiceServer
 }
 
 func NewRaftNode(address data.Address, app application.Application) *RaftNode {
 	rn := &RaftNode{
-		Address: address,
+		Address:     address,
 		Application: app,
-		Volatile: *data.NewVolatile(),
+		Volatile:    *data.NewVolatile(),
 	}
 
 	// TODO: try to load from file
 	rn.Persistence = *data.NewPersistence()
 
-	return rn;
+	return rn
 }
 
 func (rn *RaftNode) SetTimeout() {

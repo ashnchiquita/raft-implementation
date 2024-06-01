@@ -1,61 +1,53 @@
 package core
 
 import (
+	"context"
 	"strings"
 
+	grpc "tubes.sister/raft/gRPC"
 	"tubes.sister/raft/node/data"
 )
 
-type AppendEntriesArgs struct {
-	term          int             // leader’s term
-	leaderAddress data.Address    // so follower can redirect clients
-	prevLogIndex  int             // index of log entry immediately preceding new ones
-	prevLogTerm   int             // term of prevLogIndex entry
-	entries       []data.LogEntry // log entries to store (empty for heartbeat; may send more than one for efficiency)
-	leaderCommit  int             // leader’s commitIndex
-}
+func (rn *RaftNode) AppendEntries(ctx context.Context, args *grpc.AppendEntriesArgs) (*grpc.AppendEntriesReply, error) {
+	reply := &grpc.AppendEntriesReply{Term: int32(rn.Persistence.CurrentTerm)}
 
-type AppendEntriesReply struct {
-	term    int  // currentTerm, for leader to update itself
-	success bool // true if follower contained entry matching prevLogIndex and prevLogTerm
-}
-
-func (rn *RaftNode) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) error {
 	// Rule 1 : Reply false if term < currentTerm (§5.1)
-	if args.term < rn.Persistence.CurrentTerm {
-		reply.success = false
-		return nil
+	if int(args.Term) < rn.Persistence.CurrentTerm {
+		reply.Success = false
+		return reply, nil
 	}
 
-	if args.term > rn.Persistence.CurrentTerm {
-		rn.Persistence.CurrentTerm = args.term
+	if int(args.Term) > rn.Persistence.CurrentTerm {
+		rn.Persistence.CurrentTerm = int(args.Term)
 		rn.Type = FOLLOWER
 	}
 
 	// Rule 2: Reply false if log doesn’t contain an
 	// entry at prevLogIndex whose term matches prevLogTerm
-	if len(rn.Persistence.Log) <= args.prevLogIndex || rn.Persistence.Log[args.prevLogIndex].Term != args.prevLogTerm {
-		reply.success = false
-		return nil
+	if len(rn.Persistence.Log) <= int(args.PrevLogIndex) || rn.Persistence.Log[args.PrevLogIndex].Term != int(args.PrevLogTerm) {
+		reply.Success = false
+		return reply, nil
 	}
 
-	for i := args.prevLogIndex + 1; i <= args.prevLogIndex+len(args.entries); i++ {
+	for i := int(args.PrevLogIndex) + 1; i <= int(args.PrevLogIndex)+len(args.Entries); i++ {
 		// Rule 3: If an existing entry conflicts with a new one (same index
 		// but different terms), delete the existing entry and all that
 		// follow it (§5.3)
-		if len(rn.Persistence.Log)-1 >= i && rn.Persistence.Log[i].Term != args.term {
+		if len(rn.Persistence.Log)-1 >= i && rn.Persistence.Log[i].Term != int(args.Term) {
 			rn.Persistence.Log = rn.Persistence.Log[0:i]
 		}
 
 		// Rule 4: Append any new entries not already in the log
 		if len(rn.Persistence.Log) == i {
-			rn.Persistence.Log = append(rn.Persistence.Log, args.entries[i-args.prevLogIndex-1])
+			argsEntry := args.Entries[i-int(args.PrevLogIndex)-1]
+			newEntry := data.LogEntry{Term: int(argsEntry.Term), Command: argsEntry.Command, Value: argsEntry.Value}
+			rn.Persistence.Log = append(rn.Persistence.Log, newEntry)
 		}
 	}
 
 	// Rule 5:  If leaderCommit > commitIndex, set commitIndex =
 	// min(leaderCommit, index of last new entry)
-	for i := rn.Volatile.CommitIndex + 1; i <= args.leaderCommit && i < len(rn.Persistence.Log); i++ {
+	for i := rn.Volatile.CommitIndex + 1; i <= int(args.LeaderCommit) && i < len(rn.Persistence.Log); i++ {
 		currentEntry := rn.Persistence.Log[i]
 
 		command := currentEntry.Command
@@ -76,9 +68,8 @@ func (rn *RaftNode) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesR
 		rn.Volatile.CommitIndex = i
 	}
 
-	reply.term = rn.Persistence.CurrentTerm
-	rn.Volatile.LeaderAddress.IP = args.leaderAddress.IP
-	rn.Volatile.LeaderAddress.Port = args.leaderAddress.Port
+	rn.Volatile.LeaderAddress.IP = args.LeaderAddress.Ip
+	rn.Volatile.LeaderAddress.Port = args.LeaderAddress.Port
 
-	return nil
+	return reply, nil
 }

@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package core;
+
+option go_package = "tubes.sister/raft/gRPC";
+
+service AppendEntriesService {
+  rpc AppendEntries (AppendEntriesArgs) returns (AppendEntriesReply) {}
+}
+
+message AppendEntriesArgs {
+  int32 term = 1;
+
+  message LeaderAddress {
+    string ip = 1;
+    string port = 2;
+  }
+  LeaderAddress leaderAddress = 2;
+
+  int32 prevLogIndex = 3;
+  int32 prevLogTerm = 4;
+
+  message LogEntry {
+    int32 term = 1;
+    string command = 2;
+    string value = 3;
+  }
+  repeated LogEntry entries = 5;
+
+  int32 leaderCommit = 6;
+}
+
+message AppendEntriesReply {
+  bool success = 1;
+  int32 term = 2;
+}
