@@ -19,7 +19,7 @@ func (rn *RaftNode) AppendEntries(ctx context.Context, args *gRPC.AppendEntriesA
 
 	if int(args.Term) > rn.Persistence.CurrentTerm {
 		rn.Persistence.CurrentTerm = int(args.Term)
-		rn.Type = FOLLOWER
+		rn.Volatile.Type = data.FOLLOWER
 	}
 
 	// Rule 2: Reply false if log doesn’t contain an
@@ -69,7 +69,7 @@ func (rn *RaftNode) AppendEntries(ctx context.Context, args *gRPC.AppendEntriesA
 	}
 
 	rn.Volatile.LeaderAddress.IP = args.LeaderAddress.Ip
-	rn.Volatile.LeaderAddress.Port = args.LeaderAddress.Port
+	rn.Volatile.LeaderAddress.Port = int(args.LeaderAddress.Port)
 
 	return reply, nil
 }
