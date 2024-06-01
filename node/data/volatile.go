@@ -1,8 +1,10 @@
 package data
 
 type Volatile struct {
-	CommitIndex 	int
-	LastApplied 	int
+	CommitIndex   int
+	LastApplied   int
+	LeaderAddress Address
+	ClusterList   []Address
 }
 
 // CONSTRUCTOR
