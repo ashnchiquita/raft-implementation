@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"log"
-	"time"
 
 	"tubes.sister/raft/client/http"
 
@@ -41,12 +40,9 @@ func main() {
 
 		addr := data.NewAddress("localhost", *port)
 		app := application.NewApplication()
+
 		raftNode := core.NewRaftNode(*addr, *app)
-
-		go raftNode.StartServer()
-
-		log.Println("Server started")
-		time.Sleep(10 * time.Second)
+		raftNode.InitializeServer()
 	}
 }
 

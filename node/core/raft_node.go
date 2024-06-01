@@ -1,20 +1,18 @@
 package core
 
 import (
-	"fmt"
-	"log"
-	"net"
 	"time"
 
-	go_grpc "google.golang.org/grpc"
 	gRPC "tubes.sister/raft/gRPC/node/core"
 	"tubes.sister/raft/node/application"
 	"tubes.sister/raft/node/data"
 )
 
 type RaftNode struct {
-	// Self data
-	Address data.Address
+	gRPC.UnimplementedHelloServer
+
+	Address data.Address  // Address of the node (ip + port)
+	timeout time.Duration // Current timeout value for the node
 
 	// State
 	Persistence data.Persistence
@@ -22,10 +20,6 @@ type RaftNode struct {
 
 	// App
 	Application application.Application
-
-	// Timer
-	Timeout time.Duration
-	gRPC.UnimplementedHelloServer
 }
 
 func NewRaftNode(address data.Address, app application.Application) *RaftNode {
@@ -38,29 +32,17 @@ func NewRaftNode(address data.Address, app application.Application) *RaftNode {
 	// TODO: try to load from file
 	rn.Persistence = *data.NewPersistence()
 
+	rn.setTimeout()
 	return rn
 }
 
-// Starts the node as GRPC server
-func (rn *RaftNode) StartServer() {
-
-	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", rn.Address.Port))
-	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
-	}
-
-	var opts []go_grpc.ServerOption
-	grpcServer := go_grpc.NewServer(opts...)
-
-	gRPC.RegisterHelloServer(grpcServer, rn)
-
-	grpcServer.Serve(lis)
-}
-
-func (rn *RaftNode) SetTimeout() {
-	if rn.Volatile.Type == data.LEADER {
-		rn.Timeout = HEARTBEAT_INTERVAL
-	} else {
-		rn.Timeout = RandomizeElectionTimeout()
+func (rn *RaftNode) setTimeout() {
+	switch rn.Volatile.Type {
+	case data.LEADER:
+		rn.timeout = HEARTBEAT_SEND_INTERVAL
+	case data.CANDIDATE:
+		rn.timeout = RandomizeElectionTimeout()
+	default:
+		rn.timeout = HEARTBEAT_RECV_INTERVAL
 	}
 }
