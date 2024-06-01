@@ -4,12 +4,12 @@ import (
 	"context"
 	"strings"
 
-	grpc "tubes.sister/raft/gRPC"
+	gRPC "tubes.sister/raft/gRPC/node/core"
 	"tubes.sister/raft/node/data"
 )
 
-func (rn *RaftNode) AppendEntries(ctx context.Context, args *grpc.AppendEntriesArgs) (*grpc.AppendEntriesReply, error) {
-	reply := &grpc.AppendEntriesReply{Term: int32(rn.Persistence.CurrentTerm)}
+func (rn *RaftNode) AppendEntries(ctx context.Context, args *gRPC.AppendEntriesArgs) (*gRPC.AppendEntriesReply, error) {
+	reply := &gRPC.AppendEntriesReply{Term: int32(rn.Persistence.CurrentTerm)}
 
 	// Rule 1 : Reply false if term < currentTerm (§5.1)
 	if int(args.Term) < rn.Persistence.CurrentTerm {

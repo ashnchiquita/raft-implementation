@@ -6,7 +6,7 @@ import (
 	"tubes.sister/raft/node/application"
 	"tubes.sister/raft/node/data"
 
-	pb "tubes.sister/raft/gRPC"
+	gRPC "tubes.sister/raft/gRPC/node/core"
 )
 
 type RaftNode struct {
@@ -25,7 +25,7 @@ type RaftNode struct {
 	Timeout time.Duration
 
 	// RPCs
-	pb.UnimplementedAppendEntriesServiceServer
+	gRPC.UnimplementedAppendEntriesServiceServer
 }
 
 func NewRaftNode(address data.Address, app application.Application) *RaftNode {
