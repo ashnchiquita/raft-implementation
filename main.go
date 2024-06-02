@@ -42,6 +42,15 @@ func main() {
 		app := application.NewApplication()
 
 		raftNode := core.NewRaftNode(*addr, *app)
+		//! Remove these later
+		if *port == 5000 {
+			raftNode.Volatile.Type = data.LEADER
+		}
+		raftNode.Volatile.ClusterList = []data.ClusterData{
+			{Address: *data.NewAddress("localhost", 5000), MatchIndex: -1, NextIndex: 0},
+			{Address: *data.NewAddress("localhost", 5001), MatchIndex: -1, NextIndex: 0},
+			{Address: *data.NewAddress("localhost", 5002), MatchIndex: -1, NextIndex: 0},
+		}
 		raftNode.InitializeServer()
 	}
 }
