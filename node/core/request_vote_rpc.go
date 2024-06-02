@@ -31,10 +31,10 @@ func (rn *RaftNode) RequestVote(args *gRPC.RequestVoteArgs) (*gRPC.RequestVoteRe
 	}
 
 	// Rule 2 : If votedFor is null or candidateId, and candidate’s log is at least as up-to-date as receiver’s log, grant vote (§5.2, §5.4)
-	if (votedFor == data.Address{} ||
-		votedFor == clusterList[args.CandidateId]) &&
+	if (votedFor.Equals(&data.Address{}) ||
+		clusterList[args.CandidateId].Address.Equals(&votedFor)) &&
 		isUpdated(int(args.LastLogIndex), int(args.LastLogTerm), log) {
-		rn.Persistence.VotedFor = clusterList[args.CandidateId]
+		rn.Persistence.VotedFor = clusterList[args.CandidateId].Address
 		reply.VoteGranted = true
 	} else {
 		reply.VoteGranted = false
@@ -44,7 +44,6 @@ func (rn *RaftNode) RequestVote(args *gRPC.RequestVoteArgs) (*gRPC.RequestVoteRe
 	return reply, nil
 }
 
-// Updated isUpdated function
 func isUpdated(lastLogIndex int, lastLogTerm int, log []data.LogEntry) bool {
 	if len(log) == 0 {
 		return true
