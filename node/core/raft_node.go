@@ -9,8 +9,6 @@ import (
 )
 
 type RaftNode struct {
-	gRPC.UnimplementedHelloServer
-
 	Address data.Address  // Address of the node (ip + port)
 	timeout time.Duration // Current timeout value for the node
 
@@ -23,6 +21,8 @@ type RaftNode struct {
 
 	// RPCs
 	gRPC.UnimplementedAppendEntriesServiceServer
+	gRPC.UnimplementedHelloServer
+	gRPC.UnimplementedCmdExecutorServer
 }
 
 func NewRaftNode(address data.Address, app application.Application) *RaftNode {

@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	HEARTBEAT_RECV_INTERVAL = 5000 * time.Millisecond // Previously: 100ms
+	HEARTBEAT_RECV_INTERVAL = 60 * time.Second // Previously: 100ms
 	HEARTBEAT_SEND_INTERVAL = 100 * time.Millisecond
 	ELECTION_TIMEOUT_MIN    = 150 * time.Millisecond
 	ELECTION_TIMEOUT_MAX    = 300 * time.Millisecond

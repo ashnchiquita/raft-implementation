@@ -2,7 +2,7 @@ package data
 
 type Volatile struct {
 	LeaderAddress Address
-	ClusterList   []Address
+	ClusterList   []ClusterData
 	CommitIndex   int
 	LastApplied   int
 	Type          NodeType
@@ -11,8 +11,8 @@ type Volatile struct {
 // CONSTRUCTOR
 func NewVolatile() *Volatile {
 	return &Volatile{
-		CommitIndex: 0,
-		LastApplied: 0,
+		CommitIndex: -1,
+		LastApplied: -1,
 		Type:        FOLLOWER,
 	}
 }

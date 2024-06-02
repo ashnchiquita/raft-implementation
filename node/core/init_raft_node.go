@@ -8,6 +8,7 @@ import (
 
 	go_grpc "google.golang.org/grpc"
 	gRPC "tubes.sister/raft/gRPC/node/core"
+	"tubes.sister/raft/node/data"
 )
 
 // Initialize raft node to listen for GRPC requests from other nodes in the cluster
@@ -15,6 +16,11 @@ import (
 func (rn *RaftNode) InitializeServer() {
 	go rn.startGRPCServer()
 	rn.startTimerLoop()
+}
+
+func (rn *RaftNode) InitializeAsLeader() {
+	rn.Volatile.Type = data.LEADER
+	go rn.startReplicatingLogs()
 }
 
 // Starts the GRPC server
@@ -28,6 +34,8 @@ func (rn *RaftNode) startGRPCServer() {
 	grpcServer := go_grpc.NewServer(opts...)
 
 	gRPC.RegisterHelloServer(grpcServer, rn)
+	gRPC.RegisterAppendEntriesServiceServer(grpcServer, rn)
+	gRPC.RegisterCmdExecutorServer(grpcServer, rn)
 
 	grpcServer.Serve(lis)
 }
@@ -42,11 +50,12 @@ func (rn *RaftNode) startTimerLoop() {
 		prev = now
 
 		// !: For testing only, remove these lines when timeout handling has been implemented
-		log.Printf("Current timeout: %v", rn.timeout)
+		// log.Printf("Current timeout: %v", rn.timeout)
 		time.Sleep(500 * time.Millisecond)
 
 		if rn.timeout <= 0 {
 			// TODO: Handle timeout based on the current node type
+			log.Printf("Timeout occurred for node %v", rn.Address)
 			break
 		}
 	}
