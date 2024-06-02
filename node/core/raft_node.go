@@ -15,8 +15,9 @@ type RaftNode struct {
 	timeout time.Duration // Current timeout value for the node
 
 	// State
-	Persistence data.Persistence
-	Volatile    data.Volatile
+	Persistence    data.Persistence
+	Volatile       data.Volatile
+	LeaderVolatile data.LeaderVolatile
 
 	// App
 	Application application.Application
@@ -46,6 +47,6 @@ func (rn *RaftNode) setTimeout() {
 	case data.CANDIDATE:
 		rn.timeout = RandomizeElectionTimeout()
 	default:
-		rn.timeout = HEARTBEAT_RECV_INTERVAL
+		rn.timeout = RandomizeElectionTimeout()
 	}
 }

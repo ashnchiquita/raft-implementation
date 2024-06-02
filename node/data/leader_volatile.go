@@ -1,19 +1,23 @@
 package data
 
+import gRPC "tubes.sister/raft/gRPC/node/core"
+
 type LeaderVolatile struct {
-	nextIndex 	[]int
-	matchIndex 	[]int
-	Volatile
+	AppendEntriesClients []gRPC.AppendEntriesServiceClient
+	NextIndex            []int
+	MatchIndex           []int
+	// Volatile
 }
 
 // CONSTRUCTOR
 func NewLeaderVolatile(commitIndex, lastApplied int) *LeaderVolatile {
 	return &LeaderVolatile{
-		nextIndex: []int{},
-		matchIndex: []int{},
-		Volatile: Volatile{
-			CommitIndex: commitIndex,
-			LastApplied: lastApplied,
-		},
+		AppendEntriesClients: []gRPC.AppendEntriesServiceClient{},
+		NextIndex:            []int{},
+		MatchIndex:           []int{},
+		// Volatile: Volatile{
+		// 	CommitIndex: commitIndex,
+		// 	LastApplied: lastApplied,
+		// },
 	}
 }

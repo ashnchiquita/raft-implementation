@@ -13,10 +13,11 @@ import (
 )
 
 var (
-	programType = "server"
-	port        = flag.Int("port", 50051, "GRPC Server Port")
-	serverAddr  = flag.String("server_address", "localhost:50051", "GRPC Server Address")
-	clientPort  = flag.Int("client_port", 3000, "HTTP Client Port")
+	programType  = "server"
+	port         = flag.Int("port", 50051, "GRPC Server Port")
+	followerPort = flag.Int("follower", 50052, "GRPC Follower Port for heartbeat testing")
+	serverAddr   = flag.String("server_address", "localhost:50051", "GRPC Server Address")
+	clientPort   = flag.Int("client_port", 3000, "HTTP Client Port")
 )
 
 func main() {
@@ -35,6 +36,16 @@ func main() {
 		webClient.Start()
 		defer webClient.Stop()
 
+	case "heartbeat-lead":
+		log.Println("Starting heartbeat leader...")
+		addr := data.NewAddress("localhost", *port)
+		app := application.NewApplication()
+
+		raftNode := core.NewRaftNode(*addr, *app)
+		raftNode.Volatile.ClusterList = append(raftNode.Volatile.ClusterList, *data.NewAddress("localhost", *followerPort))
+		raftNode.Volatile.Type = data.LEADER
+		raftNode.InitializeServer()
+
 	default: // server
 		log.Println("Starting server...")
 
@@ -47,8 +58,8 @@ func main() {
 }
 
 func parseFlags() {
-	flag.Func("type", "'server' (default) or 'terminal-client' or 'web-client'", func(flagValue string) error {
-		if flagValue == "terminal-client" || flagValue == "web-client" {
+	flag.Func("type", "'server' (default) or 'heartbeat-lead' or 'terminal-client' or 'web-client'", func(flagValue string) error {
+		if flagValue == "terminal-client" || flagValue == "web-client" || flagValue == "heartbeat-lead" {
 			programType = flagValue
 		}
 
