@@ -1,6 +1,7 @@
 package core
 
 import (
+	"log"
 	"time"
 
 	gRPC "tubes.sister/raft/gRPC/node/core"
@@ -25,15 +26,17 @@ type RaftNode struct {
 	gRPC.UnimplementedCmdExecutorServer
 }
 
-func NewRaftNode(address data.Address, app application.Application) *RaftNode {
+func NewRaftNode(address data.Address) *RaftNode {
 	rn := &RaftNode{
 		Address:     address,
-		Application: app,
+		Application: *application.NewApplication(),
 		Volatile:    *data.NewVolatile(),
 	}
 
 	// TODO: try to load from file
-	rn.Persistence = *data.NewPersistence()
+	rn.Persistence = *data.InitPersistence(address)
+
+	log.Println(rn.Persistence)
 
 	rn.setTimeout()
 	return rn

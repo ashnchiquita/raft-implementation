@@ -11,6 +11,10 @@ const (
 	JSON_EXTENSION = ".json"
 )
 
+func NewJSONSerializer[T any]() *JSONSerializer[T] {
+	return &JSONSerializer[T]{}
+}
+
 func (js *JSONSerializer[T]) Serialize(data T, name string) error {
 	path := GetPath(name + JSON_EXTENSION)
 

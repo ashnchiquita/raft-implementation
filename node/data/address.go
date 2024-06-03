@@ -25,3 +25,7 @@ func (a *Address) String() string {
 func (a *Address) Equals(other *Address) bool {
 	return reflect.DeepEqual(a, other)
 }
+
+func (a *Address) IsZeroAddress() bool {
+	return a.IP == "" && a.Port == 0
+}
