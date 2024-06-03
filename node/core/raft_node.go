@@ -1,7 +1,6 @@
 package core
 
 import (
-	"log"
 	"time"
 
 	gRPC "tubes.sister/raft/gRPC/node/core"
@@ -33,10 +32,7 @@ func NewRaftNode(address data.Address) *RaftNode {
 		Volatile:    *data.NewVolatile(),
 	}
 
-	// TODO: try to load from file
 	rn.Persistence = *data.InitPersistence(address)
-
-	log.Println(rn.Persistence)
 
 	rn.setTimeout()
 	return rn
