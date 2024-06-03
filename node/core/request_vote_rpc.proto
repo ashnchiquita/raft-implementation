@@ -11,7 +11,13 @@ service RaftNode {
 
 message RequestVoteArgs {
     int32 term = 1;
-    int32 candidateId = 2;
+
+    message CandidateAddress {
+        string ip = 1;
+        int32 port = 2;
+    }
+    CandidateAddress candidateAddress = 2;
+
     int32 lastLogIndex = 3;
     int32 lastLogTerm = 4;
 }

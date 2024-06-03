@@ -9,7 +9,6 @@ import (
 func (rn *RaftNode) RequestVote(args *gRPC.RequestVoteArgs) (*gRPC.RequestVoteReply, error) {
 	// Node
 	currTerm := rn.Persistence.CurrentTerm
-	clusterList := rn.Volatile.ClusterList
 	votedFor := rn.Persistence.VotedFor
 	log := rn.Persistence.Log
 
@@ -31,10 +30,11 @@ func (rn *RaftNode) RequestVote(args *gRPC.RequestVoteArgs) (*gRPC.RequestVoteRe
 	}
 
 	// Rule 2 : If votedFor is null or candidateId, and candidate’s log is at least as up-to-date as receiver’s log, grant vote (§5.2, §5.4)
-	if (votedFor.Equals(&data.Address{}) ||
-		clusterList[args.CandidateId].Address.Equals(&votedFor)) &&
+	candidateAddr := data.Address{IP: args.CandidateAddress.Ip, Port: int(args.CandidateAddress.Port)}
+	if (votedFor.IsZeroAddress() ||
+		candidateAddr.Equals(&votedFor)) &&
 		isUpdated(int(args.LastLogIndex), int(args.LastLogTerm), log) {
-		rn.Persistence.VotedFor = clusterList[args.CandidateId].Address
+		rn.Persistence.VotedFor = candidateAddr
 		reply.VoteGranted = true
 	} else {
 		reply.VoteGranted = false
