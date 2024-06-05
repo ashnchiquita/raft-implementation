@@ -61,7 +61,7 @@ func main() {
 		if *port == 5000 {
 			raftNode.Volatile.Type = data.LEADER
 		}
-		if *port == 5001 {
+		if *port == 5000 {
 			raftNode.Volatile.Type = data.LEADER
 		}
 		raftNode.Volatile.ClusterList = []data.ClusterData{
@@ -70,7 +70,7 @@ func main() {
 			{Address: *data.NewAddress("localhost", 5002), MatchIndex: -1, NextIndex: 0},
 		}
 
-		raftNode.Volatile.LeaderAddress = *data.NewAddress("localhost", 5001)
+		raftNode.Volatile.LeaderAddress = *data.NewAddress("localhost", 5000)
 		raftNode.InitializeServer()
 	}
 }
