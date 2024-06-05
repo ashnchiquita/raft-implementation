@@ -101,6 +101,22 @@ func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC
 			rn.Persistence.Log = append(rn.Persistence.Log, *newLog)
 		}
 		return &gRPC.ExecuteRes{Success: true, Value: "OK"}, nil
+	case "getall":
+		var values []string
+		for _, logEntry := range rn.Persistence.Log {
+			if logEntry.Command == "set" {
+				keyAndValue := strings.Split(logEntry.Value, ",")
+				values = append(values, fmt.Sprintf("%s: %s", keyAndValue[0], keyAndValue[1]))
+			}
+		}
+		return &gRPC.ExecuteRes{Success: true, Value: strings.Join(values, ", ")}, nil
+	case "delall":
+		for i, logEntry := range rn.Persistence.Log {
+			if logEntry.Command == "set" {
+				rn.Persistence.Log[i].Command = "del"
+			}
+		}
+		return &gRPC.ExecuteRes{Success: true, Value: "OK"}, nil
 	}
 
 	return &gRPC.ExecuteRes{Success: true}, nil

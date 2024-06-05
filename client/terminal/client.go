@@ -141,6 +141,28 @@ func (tc *TerminalClient) Start() {
 			} else {
 				log.Printf("ExecuteReply: %v", executeReply.Value)
 			}
+		case "getall":
+			fmt.Println("command", input, "called")
+			executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+				Cmd:  "getall",
+				Vals: splitted[1:],
+			})
+			if err != nil {
+				log.Printf("Error executing command: %v", err)
+			} else {
+				log.Printf("ExecuteReply: %v", executeReply.Value)
+			}
+		case "delall":
+			fmt.Println("command", input, "called")
+			executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+				Cmd:  "delall",
+				Vals: splitted[1:],
+			})
+			if err != nil {
+				log.Printf("Error executing command: %v", err)
+			} else {
+				log.Printf("ExecuteReply: %v", executeReply.Value)
+			}
 		}
 	}
 }
