@@ -46,14 +46,14 @@ func (rn *RaftNode) startTimerLoop() {
 	for {
 		now := time.Now()
 		elapsed := now.Sub(prev)
-		rn.timeout = rn.timeout - elapsed
+		rn.setTimoutSafe(rn.timeout.Value - elapsed)
 		prev = now
 
 		// !: For testing only, remove these lines when timeout handling has been implemented
 		// log.Printf("Current timeout: %v", rn.timeout)
 		time.Sleep(500 * time.Millisecond)
 
-		if rn.timeout <= 0 {
+		if rn.timeout.Value <= 0 {
 			// TODO: Handle timeout based on the current node type
 			log.Printf("Timeout occurred for node %v", rn.Address)
 			break
