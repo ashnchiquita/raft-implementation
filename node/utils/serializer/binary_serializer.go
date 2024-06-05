@@ -11,6 +11,10 @@ const (
 	BIN_EXTENSION = ".bin"
 )
 
+func NewBinarySerializer[T any]() *BinarySerializer[T] {
+	return &BinarySerializer[T]{}
+}
+
 func (bs *BinarySerializer[T]) Serialize(data T, name string) error {
 	path := GetPath(name + BIN_EXTENSION)
 

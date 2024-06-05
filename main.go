@@ -7,7 +7,6 @@ import (
 	"tubes.sister/raft/client/http"
 
 	"tubes.sister/raft/client/terminal"
-	"tubes.sister/raft/node/application"
 	"tubes.sister/raft/node/core"
 	"tubes.sister/raft/node/data"
 )
@@ -50,9 +49,17 @@ func main() {
 		log.Println("Starting server...")
 
 		addr := data.NewAddress("localhost", *port)
-		app := application.NewApplication()
 
-		raftNode := core.NewRaftNode(*addr, *app)
+		raftNode := core.NewRaftNode(*addr)
+		//! Remove these later
+		if *port == 5000 {
+			raftNode.Volatile.Type = data.LEADER
+		}
+		raftNode.Volatile.ClusterList = []data.ClusterData{
+			{Address: *data.NewAddress("localhost", 5000), MatchIndex: -1, NextIndex: 0},
+			{Address: *data.NewAddress("localhost", 5001), MatchIndex: -1, NextIndex: 0},
+			{Address: *data.NewAddress("localhost", 5002), MatchIndex: -1, NextIndex: 0},
+		}
 		raftNode.InitializeServer()
 	}
 }

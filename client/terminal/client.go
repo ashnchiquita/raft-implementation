@@ -27,9 +27,6 @@ func NewTerminalClient(clientPort int, serverAddr string) *TerminalClient {
 		log.Fatalf("Failed to dial server: %v", err)
 	}
 
-	client := gRPC.NewHelloClient(conn)
-	client.SayHello(context.Background(), &gRPC.HelloMsg{Name: "james"})
-
 	return &TerminalClient{conn: conn}
 }
 
@@ -83,8 +80,21 @@ func (tc *TerminalClient) Start() {
 			break
 		}
 
+		// TODO: Determine whether creating a new client for each command input is better
+		// TODO: than creating a single client as attribute to TerminalClient
+		client := gRPC.NewCmdExecutorClient(tc.conn)
+
 		// TODO: implement the command
 		fmt.Println("command", input, "called")
+		executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+			Cmd:  "set",
+			Vals: splitted[1:],
+		})
+		if err != nil {
+			log.Printf("Error executing command: %v", err)
+		}
+
+		log.Printf("ExecuteReply: %v", executeReply.Success)
 	}
 }
 

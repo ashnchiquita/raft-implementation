@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"log"
 	"strings"
 
 	gRPC "tubes.sister/raft/gRPC/node/core"
@@ -10,7 +11,7 @@ import (
 
 func (rn *RaftNode) AppendEntries(ctx context.Context, args *gRPC.AppendEntriesArgs) (*gRPC.AppendEntriesReply, error) {
 	reply := &gRPC.AppendEntriesReply{Term: int32(rn.Persistence.CurrentTerm)}
-	rn.timeout = RandomizeElectionTimeout()
+	rn.setTimoutSafe(RandomizeElectionTimeout())
 
 	// Rule 1 : Reply false if term < currentTerm (§5.1)
 	if int(args.Term) < rn.Persistence.CurrentTerm {
@@ -72,5 +73,7 @@ func (rn *RaftNode) AppendEntries(ctx context.Context, args *gRPC.AppendEntriesA
 	rn.Volatile.LeaderAddress.IP = args.LeaderAddress.Ip
 	rn.Volatile.LeaderAddress.Port = int(args.LeaderAddress.Port)
 
+	log.Printf("Node %v updated its log", rn.Address)
+	reply.Success = true
 	return reply, nil
 }

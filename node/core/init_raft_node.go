@@ -8,7 +8,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	pb "tubes.sister/raft/gRPC/node/core"
+	gRPC "tubes.sister/raft/gRPC/node/core"
 	"tubes.sister/raft/node/data"
 )
 
@@ -20,21 +20,26 @@ func (rn *RaftNode) InitializeServer() {
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
-	for _, addr := range rn.Volatile.ClusterList {
-		log.Printf("%s:%d", addr.IP, addr.Port)
-		conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", addr.IP, addr.Port), opts...)
+	for clusterIdx, addr := range rn.Volatile.ClusterList {
+		log.Printf("%s:%d", addr.Address.IP, addr.Address.Port)
+		conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", addr.Address.IP, addr.Address.Port), opts...)
 
 		if err != nil {
 			log.Fatalf("Failed to dial server: %v", err)
 		}
 
-		client := pb.NewAppendEntriesServiceClient(conn)
-		rn.LeaderVolatile.AppendEntriesClients = append(rn.LeaderVolatile.AppendEntriesClients, client)
-		rn.LeaderVolatile.NextIndex = append(rn.LeaderVolatile.NextIndex, len(rn.Persistence.Log))
-		rn.LeaderVolatile.MatchIndex = append(rn.LeaderVolatile.NextIndex, 0)
+		client := gRPC.NewAppendEntriesServiceClient(conn)
+		rn.Volatile.ClusterList[clusterIdx].Client = client
+		rn.Volatile.ClusterList[clusterIdx].NextIndex = len(rn.Persistence.Log)
+		rn.Volatile.ClusterList[clusterIdx].MatchIndex = 0
 	}
 
 	rn.startTimerLoop()
+}
+
+func (rn *RaftNode) InitializeAsLeader() {
+	rn.Volatile.Type = data.LEADER
+	go rn.startReplicatingLogs()
 }
 
 // Starts the GRPC server
@@ -47,8 +52,9 @@ func (rn *RaftNode) startGRPCServer() {
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
 
-	pb.RegisterHelloServer(grpcServer, rn)
-	pb.RegisterAppendEntriesServiceServer(grpcServer, rn)
+	gRPC.RegisterHelloServer(grpcServer, rn)
+	gRPC.RegisterAppendEntriesServiceServer(grpcServer, rn)
+	gRPC.RegisterCmdExecutorServer(grpcServer, rn)
 
 	grpcServer.Serve(lis)
 }
@@ -59,20 +65,20 @@ func (rn *RaftNode) startTimerLoop() {
 	for {
 		now := time.Now()
 		elapsed := now.Sub(prev)
-		rn.timeout = rn.timeout - elapsed
+		rn.setTimoutSafe(rn.timeout.Value - elapsed)
 		prev = now
 
 		// !: For testing only, remove these lines when timeout handling has been implemented
 		// log.Printf("Current timeout: %v", rn.timeout)
-		// time.Sleep(50 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 
-		if rn.timeout <= 0 {
+		if rn.timeout.Value <= 0 {
 			// TODO: Handle timeout based on the current node type
 
 			switch rn.Volatile.Type {
 			case data.LEADER:
 				rn.heartbeat()
-				rn.timeout = HEARTBEAT_SEND_INTERVAL
+				rn.timeout.Value = HEARTBEAT_SEND_INTERVAL
 			case data.FOLLOWER:
 				log.Println("start election")
 				return
