@@ -84,17 +84,64 @@ func (tc *TerminalClient) Start() {
 		// TODO: than creating a single client as attribute to TerminalClient
 		client := gRPC.NewCmdExecutorClient(tc.conn)
 
-		// TODO: implement the command
-		fmt.Println("command", input, "called")
-		executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
-			Cmd:  "set",
-			Vals: splitted[1:],
-		})
-		if err != nil {
-			log.Printf("Error executing command: %v", err)
-		}
+		switch splitted[0] {
+		case "get":
+			fmt.Println("command", input, "called")
+			executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+				Cmd:  "get",
+				Vals: splitted[1:],
+			})
+			if err != nil {
+				log.Printf("Error executing command: %v", err)
+			} else {
+				log.Printf("ExecuteReply: %v", executeReply.Value)
+			}
+		case "set":
+			fmt.Println("command", input, "called")
+			executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+				Cmd:  "set",
+				Vals: splitted[1:],
+			})
+			if err != nil {
+				log.Printf("Error executing command: %v", err)
+			}
 
-		log.Printf("ExecuteReply: %v", executeReply.Success)
+			log.Printf("ExecuteReply: %v", executeReply.Value)
+		case "strlen":
+			fmt.Println("command", input, "called")
+			executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+				Cmd:  "strlen",
+				Vals: splitted[1:],
+			})
+			if err != nil {
+				log.Printf("Error executing command: %v", err)
+			} else {
+				log.Printf("ExecuteReply: %v", executeReply.Value)
+			}
+
+		case "del":
+			fmt.Println("command", input, "called")
+			executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+				Cmd:  "del",
+				Vals: splitted[1:],
+			})
+			if err != nil {
+				log.Printf("Error executing command: %v", err)
+			} else {
+				log.Printf("ExecuteReply: %v", executeReply.Value)
+			}
+		case "append":
+			fmt.Println("command", input, "called")
+			executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+				Cmd:  "append",
+				Vals: splitted[1:],
+			})
+			if err != nil {
+				log.Printf("Error executing command: %v", err)
+			} else {
+				log.Printf("ExecuteReply: %v", executeReply.Value)
+			}
+		}
 	}
 }
 

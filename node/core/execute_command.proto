@@ -15,4 +15,5 @@ message ExecuteMsg {
 
 message ExecuteRes {
   bool success = 1;
+  string value = 2;
 }
