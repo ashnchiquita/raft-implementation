@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"log"
 	"strings"
 
 	gRPC "tubes.sister/raft/gRPC/node/core"
@@ -44,6 +43,7 @@ func (rn *RaftNode) AppendEntries(ctx context.Context, args *gRPC.AppendEntriesA
 			argsEntry := args.Entries[i-int(args.PrevLogIndex)-1]
 			newEntry := data.LogEntry{Term: int(argsEntry.Term), Command: argsEntry.Command, Value: argsEntry.Value}
 			rn.Persistence.Log = append(rn.Persistence.Log, newEntry)
+			rn.Persistence.Serialize()
 		}
 	}
 
@@ -73,7 +73,6 @@ func (rn *RaftNode) AppendEntries(ctx context.Context, args *gRPC.AppendEntriesA
 	rn.Volatile.LeaderAddress.IP = args.LeaderAddress.Ip
 	rn.Volatile.LeaderAddress.Port = int(args.LeaderAddress.Port)
 
-	log.Printf("Node %v updated its log", rn.Address)
 	reply.Success = true
 	return reply, nil
 }

@@ -12,79 +12,16 @@ import (
 	"tubes.sister/raft/node/data"
 )
 
-// func (rn *RaftNode) replicateLogs(start, end int) {
-// 	// Ensures only leader can replicate its log entries
-// 	if rn.Volatile.Type != data.LEADER {
-// 		return
-// 	}
-
-// 	sendingEntries := make([]*gRPC.AppendEntriesArgs_LogEntry, end-start+1)
-// 	for i := start; i <= end; i++ {
-// 		entry := rn.Persistence.Log[i]
-// 		sendingEntries = append(sendingEntries, &gRPC.AppendEntriesArgs_LogEntry{
-// 			Term:    int32(entry.Term),
-// 			Command: entry.Command,
-// 			Value:   entry.Value,
-// 		})
-// 	}
-
-// 	c := make(chan bool)
-// 	for _, addr := range rn.Volatile.ClusterList {
-// 		if addr.Address == rn.Address {
-// 			continue
-// 		}
-
-// 		go func(addr data.Address, c chan bool) {
-// 			var opts []grpc.DialOption
-// 			opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-
-// 			conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", addr.IP, addr.Port), opts...)
-// 			if err != nil {
-// 				log.Fatalf("Failed to dial server: %v", err)
-// 			}
-// 			defer conn.Close()
-
-// 			client := gRPC.NewAppendEntriesServiceClient(conn)
-
-// 			reply, err := client.AppendEntries(context.Background(), &gRPC.AppendEntriesArgs{
-// 				LeaderAddress: &gRPC.AppendEntriesArgs_LeaderAddress{
-// 					Ip:   rn.Address.IP,
-// 					Port: int32(rn.Address.Port),
-// 				},
-// 				Term:         int32(rn.Persistence.CurrentTerm),
-// 				Entries:      sendingEntries,
-// 				PrevLogIndex: int32(start - 1),
-// 				PrevLogTerm:  int32(rn.Volatile.LastApplied),
-// 				LeaderCommit: int32(rn.Volatile.CommitIndex),
-// 			})
-// 			if err != nil {
-// 				log.Printf("Error replicating logs to %v: %v", addr.Port, err)
-// 				c <- false
-// 			}
-
-// 			c <- reply.Success
-// 		}(addr.Address, c)
-// 	}
-
-// 	count := 0
-// 	for i := 0; i < len(rn.Volatile.ClusterList)-1; i++ {
-// 		if <-c {
-// 			count++
-// 		}
-// 	}
-
-//		log.Printf("Successfully replicated %d entries", count)
-//	}
 type replicationResult struct {
 	node    *data.ClusterData
-	success bool
+	success string
 }
 
 func (rn *RaftNode) startReplicatingLogs() {
 	c := make(chan replicationResult)
 
 	// Initialize replication to all nodes in the cluster
-	for _, node := range rn.Volatile.ClusterList {
+	for _, node := range rn.Volatile.ClusterList[1:] {
 		go rn.replicate(&node, c)
 	}
 
@@ -92,9 +29,15 @@ func (rn *RaftNode) startReplicatingLogs() {
 		result := <-c
 		log.Printf("Replication result: %v", result)
 
-		if result.success {
-			result.node.NextIndex++
+		switch result.success {
+		case "timeout":
+		case "hearbeat":
+			continue
+		case "failed":
+			result.node.NextIndex--
+		case "success":
 			result.node.MatchIndex++
+			result.node.NextIndex++
 		}
 
 		time.Sleep(500 * time.Millisecond)
@@ -104,14 +47,36 @@ func (rn *RaftNode) startReplicatingLogs() {
 
 func (rn *RaftNode) replicate(node *data.ClusterData, c chan replicationResult) {
 	var (
-		sendingEntries []*gRPC.AppendEntriesArgs_LogEntry
-		opts           []grpc.DialOption
-		prevTerm       int
+		sendingEntries    []*gRPC.AppendEntriesArgs_LogEntry
+		opts              []grpc.DialOption
+		prevTerm          int
+		repResult         string
+		isSendingHearbeat bool
 	)
 
 	log.Printf("Replicating logs to %v", node.Address)
 
-	if node.NextIndex >= len(rn.Persistence.Log) {
+	if node.NextIndex > 0 {
+		prevTerm = rn.Persistence.Log[node.NextIndex-1].Term
+	} else {
+		prevTerm = -1
+	}
+	isSendingHearbeat = node.NextIndex >= len(rn.Persistence.Log)
+
+	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", node.Address.IP, node.Address.Port), opts...)
+	if err != nil {
+		log.Fatalf("Failed to dial server: %v", err)
+	}
+	defer conn.Close()
+
+	client := gRPC.NewAppendEntriesServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	if isSendingHearbeat {
 		// Send heartbeat
 		sendingEntries = make([]*gRPC.AppendEntriesArgs_LogEntry, 0)
 	} else {
@@ -124,37 +89,31 @@ func (rn *RaftNode) replicate(node *data.ClusterData, c chan replicationResult) 
 		}
 	}
 
-	if node.NextIndex > 0 {
-		prevTerm = rn.Persistence.Log[node.NextIndex-1].Term
-	} else {
-		prevTerm = -1
-	}
-
-	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-
-	conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", node.Address.IP, node.Address.Port), opts...)
-	if err != nil {
-		log.Fatalf("Failed to dial server: %v", err)
-	}
-	defer conn.Close()
-
-	client := gRPC.NewAppendEntriesServiceClient(conn)
-
-	reply, err := client.AppendEntries(context.Background(), &gRPC.AppendEntriesArgs{
+	reply, err := client.AppendEntries(ctx, &gRPC.AppendEntriesArgs{
 		LeaderAddress: &gRPC.AppendEntriesArgs_LeaderAddress{
 			Ip:   rn.Address.IP,
 			Port: int32(rn.Address.Port),
 		},
 		Term:         int32(rn.Persistence.CurrentTerm),
 		Entries:      sendingEntries,
-		PrevLogIndex: int32(node.NextIndex - 1), //* NAON INI TEH ?????
+		PrevLogIndex: int32(node.NextIndex - 1),
 		PrevLogTerm:  int32(prevTerm),
 		LeaderCommit: int32(rn.Volatile.CommitIndex),
 	})
+
 	if err != nil {
 		log.Printf("Error replicating logs to %v: %v", node.Address, err)
-		c <- replicationResult{node: node, success: false}
+		c <- replicationResult{node: node, success: "timeout"}
+		return
+	} else if isSendingHearbeat {
+		c <- replicationResult{node: node, success: "heartbeat"}
+		return
 	}
 
-	c <- replicationResult{node: node, success: reply.Success}
+	if reply.Success {
+		repResult = "success"
+	} else {
+		repResult = "failed"
+	}
+	c <- replicationResult{node: node, success: repResult}
 }

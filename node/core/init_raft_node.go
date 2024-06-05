@@ -21,6 +21,7 @@ func (rn *RaftNode) InitializeServer() {
 func (rn *RaftNode) InitializeAsLeader() {
 	rn.Volatile.Type = data.LEADER
 	go rn.startReplicatingLogs()
+	rn.resetTimeout()
 }
 
 // Starts the GRPC server
@@ -50,7 +51,7 @@ func (rn *RaftNode) startTimerLoop() {
 		prev = now
 
 		// !: For testing only, remove these lines when timeout handling has been implemented
-		// log.Printf("Current timeout: %v", rn.timeout)
+		log.Printf("Current timeout: %v", rn.timeout.Value)
 		time.Sleep(500 * time.Millisecond)
 
 		if rn.timeout.Value <= 0 {

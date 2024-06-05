@@ -7,9 +7,9 @@ import (
 
 const (
 	HEARTBEAT_RECV_INTERVAL = 60 * time.Second // Previously: 100ms
-	HEARTBEAT_SEND_INTERVAL = 100 * time.Millisecond
-	ELECTION_TIMEOUT_MIN    = 150 * time.Millisecond
-	ELECTION_TIMEOUT_MAX    = 300 * time.Millisecond
+	HEARTBEAT_SEND_INTERVAL = 60 * time.Second // Previously: 100ms
+	ELECTION_TIMEOUT_MIN    = 30 * time.Second
+	ELECTION_TIMEOUT_MAX    = 60 * time.Second
 )
 
 func RandomizeElectionTimeout() time.Duration {

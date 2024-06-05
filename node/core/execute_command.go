@@ -21,8 +21,7 @@ func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC
 	case "set":
 		newLog := data.NewLogEntry(rn.Persistence.CurrentTerm, "set", data.WithValue(fmt.Sprintf("%s,%s", msg.Vals[0], msg.Vals[1])))
 		rn.Persistence.Log = append(rn.Persistence.Log, *newLog)
-
-		// rn.replicateLogs(len(rn.Persistence.Log)-1, len(rn.Persistence.Log)-1)
+		log.Printf("New msg: %v", newLog)
 	}
 
 	return &gRPC.ExecuteRes{Success: true}, nil
