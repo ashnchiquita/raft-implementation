@@ -10,7 +10,7 @@ func (rn *RaftNode) aptries(followerIdx int) error {
 	ctx, cancel := context.WithTimeout(context.Background(), HEARTBEAT_SEND_INTERVAL)
 	defer cancel()
 
-	prevLogIndex := int32(rn.LeaderVolatile.NextIndex[followerIdx] - 1)
+	prevLogIndex := int32(rn.Volatile.ClusterList[followerIdx].NextIndex - 1)
 	prevLogTerm := int32(0)
 	if prevLogIndex >= 0 {
 		prevLogTerm = int32(rn.Persistence.Log[prevLogIndex].Term)
@@ -28,8 +28,7 @@ func (rn *RaftNode) aptries(followerIdx int) error {
 		LeaderCommit: int32(rn.Volatile.CommitIndex),
 	}
 
-	// _, err := rn.LeaderVolatile.AppendEntriesClients[followerIdx].AppendEntries(ctx, args)
-	rn.LeaderVolatile.AppendEntriesClients[followerIdx].AppendEntries(ctx, args)
+	rn.Volatile.ClusterList[followerIdx].Client.AppendEntries(ctx, args)
 
 	// if err != nil {
 	// 	log.Printf("Failed to call AppendEntries: %v", err)
@@ -39,7 +38,7 @@ func (rn *RaftNode) aptries(followerIdx int) error {
 }
 
 func (rn *RaftNode) heartbeat() {
-	for idx := range rn.LeaderVolatile.AppendEntriesClients {
+	for idx := range rn.Volatile.ClusterList {
 		go rn.aptries(idx)
 	}
 }
