@@ -2,12 +2,8 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"time"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	gRPC "tubes.sister/raft/gRPC/node/core"
 	"tubes.sister/raft/node/data"
 )
@@ -25,7 +21,7 @@ func (rn *RaftNode) startReplicatingLogs() {
 		go rn.replicate(&node, c)
 	}
 
-	for {
+	for i := 0; i < len(rn.Volatile.ClusterList[1:]); i++ {
 		result := <-c
 		log.Printf("Replication result: %v", result)
 
@@ -39,16 +35,12 @@ func (rn *RaftNode) startReplicatingLogs() {
 			result.node.MatchIndex++
 			result.node.NextIndex++
 		}
-
-		time.Sleep(500 * time.Millisecond)
-		go rn.replicate(result.node, c)
 	}
 }
 
 func (rn *RaftNode) replicate(node *data.ClusterData, c chan replicationResult) {
 	var (
 		sendingEntries    []*gRPC.AppendEntriesArgs_LogEntry
-		opts              []grpc.DialOption
 		prevTerm          int
 		repResult         string
 		isSendingHearbeat bool
@@ -63,17 +55,7 @@ func (rn *RaftNode) replicate(node *data.ClusterData, c chan replicationResult) 
 	}
 	isSendingHearbeat = node.NextIndex >= len(rn.Persistence.Log)
 
-	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-
-	conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", node.Address.IP, node.Address.Port), opts...)
-	if err != nil {
-		log.Fatalf("Failed to dial server: %v", err)
-	}
-	defer conn.Close()
-
-	client := gRPC.NewAppendEntriesServiceClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), HEARTBEAT_SEND_INTERVAL)
 	defer cancel()
 
 	if isSendingHearbeat {
@@ -89,7 +71,7 @@ func (rn *RaftNode) replicate(node *data.ClusterData, c chan replicationResult) 
 		}
 	}
 
-	reply, err := client.AppendEntries(ctx, &gRPC.AppendEntriesArgs{
+	reply, err := node.Client.AppendEntries(ctx, &gRPC.AppendEntriesArgs{
 		LeaderAddress: &gRPC.AppendEntriesArgs_LeaderAddress{
 			Ip:   rn.Address.IP,
 			Port: int32(rn.Address.Port),

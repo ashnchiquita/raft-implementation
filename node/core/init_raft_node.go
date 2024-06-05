@@ -22,9 +22,9 @@ func (rn *RaftNode) InitializeServer() {
 
 	// !: this code will make their own grpc client fail when called, which shouldn't happpen anyway
 	for clusterIdx, clusterData := range rn.Volatile.ClusterList {
-		if clusterData.Address.Equals(&rn.Address) {
-			continue
-		}
+		// if clusterData.Address.Equals(&rn.Address) {
+		// 	continue
+		// }
 		conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", clusterData.Address.IP, clusterData.Address.Port), opts...)
 
 		if err != nil {
@@ -42,7 +42,6 @@ func (rn *RaftNode) InitializeServer() {
 
 func (rn *RaftNode) InitializeAsLeader() {
 	rn.Volatile.Type = data.LEADER
-	go rn.startReplicatingLogs()
 	rn.resetTimeout()
 }
 
@@ -81,8 +80,8 @@ func (rn *RaftNode) startTimerLoop() {
 
 			switch rn.Volatile.Type {
 			case data.LEADER:
-				rn.heartbeat()
-				rn.timeout.Value = HEARTBEAT_SEND_INTERVAL
+				rn.startReplicatingLogs()
+				rn.resetTimeout()
 			case data.FOLLOWER:
 				log.Println("start election")
 				return

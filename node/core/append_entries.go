@@ -10,7 +10,7 @@ import (
 
 func (rn *RaftNode) AppendEntries(ctx context.Context, args *gRPC.AppendEntriesArgs) (*gRPC.AppendEntriesReply, error) {
 	reply := &gRPC.AppendEntriesReply{Term: int32(rn.Persistence.CurrentTerm)}
-	rn.setTimoutSafe(RandomizeElectionTimeout())
+	rn.resetTimeout()
 
 	// Rule 1 : Reply false if term < currentTerm (§5.1)
 	if int(args.Term) < rn.Persistence.CurrentTerm {

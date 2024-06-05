@@ -1,6 +1,7 @@
 package core
 
 import (
+	"log"
 	"time"
 
 	gRPC "tubes.sister/raft/gRPC/node/core"
@@ -33,7 +34,7 @@ func NewRaftNode(address data.Address) *RaftNode {
 	}
 
 	rn.Persistence = *data.InitPersistence(address)
-
+	log.Printf("Logs: %v", rn.Persistence.Log)
 	rn.resetTimeout()
 	return rn
 }
@@ -49,6 +50,7 @@ func (rn *RaftNode) resetTimeout() {
 		rn.timeout.Value = RandomizeElectionTimeout()
 	}
 	rn.timeout.Mu.Unlock()
+	log.Printf("Timeout reset to: %v", rn.timeout.Value)
 }
 
 func (rn *RaftNode) setTimoutSafe(val time.Duration) {
