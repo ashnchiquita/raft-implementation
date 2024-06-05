@@ -46,7 +46,7 @@ func (rn *RaftNode) resetTimeout() {
 	case data.CANDIDATE:
 		rn.timeout.Value = RandomizeElectionTimeout()
 	default:
-		rn.timeout.Value = HEARTBEAT_RECV_INTERVAL
+		rn.timeout.Value = RandomizeElectionTimeout()
 	}
 	rn.timeout.Mu.Unlock()
 }

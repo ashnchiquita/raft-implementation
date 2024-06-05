@@ -6,7 +6,8 @@ import (
 	"net"
 	"time"
 
-	go_grpc "google.golang.org/grpc"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	gRPC "tubes.sister/raft/gRPC/node/core"
 	"tubes.sister/raft/node/data"
 )
@@ -15,6 +16,27 @@ import (
 // and start the timer loop to monitor timeout
 func (rn *RaftNode) InitializeServer() {
 	go rn.startGRPCServer()
+
+	var opts []grpc.DialOption
+	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	// !: this code will make their own grpc client fail when called, which shouldn't happpen anyway
+	for clusterIdx, clusterData := range rn.Volatile.ClusterList {
+		if clusterData.Address.Equals(&rn.Address) {
+			continue
+		}
+		conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", clusterData.Address.IP, clusterData.Address.Port), opts...)
+
+		if err != nil {
+			log.Fatalf("Failed to dial server: %v", err)
+		}
+
+		client := gRPC.NewAppendEntriesServiceClient(conn)
+		rn.Volatile.ClusterList[clusterIdx].Client = client
+		rn.Volatile.ClusterList[clusterIdx].NextIndex = len(rn.Persistence.Log)
+		rn.Volatile.ClusterList[clusterIdx].MatchIndex = 0
+	}
+
 	rn.startTimerLoop()
 }
 
@@ -30,8 +52,8 @@ func (rn *RaftNode) startGRPCServer() {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 
-	var opts []go_grpc.ServerOption
-	grpcServer := go_grpc.NewServer(opts...)
+	var opts []grpc.ServerOption
+	grpcServer := grpc.NewServer(opts...)
 
 	gRPC.RegisterHelloServer(grpcServer, rn)
 	gRPC.RegisterAppendEntriesServiceServer(grpcServer, rn)
@@ -55,8 +77,17 @@ func (rn *RaftNode) startTimerLoop() {
 
 		if rn.timeout.Value <= 0 {
 			// TODO: Handle timeout based on the current node type
-			log.Printf("Timeout occurred for node %v", rn.Address)
-			break
+
+			switch rn.Volatile.Type {
+			case data.LEADER:
+				rn.heartbeat()
+				rn.timeout.Value = HEARTBEAT_SEND_INTERVAL
+			case data.FOLLOWER:
+				log.Println("start election")
+				return
+			}
+
+			// break
 		}
 	}
 }
