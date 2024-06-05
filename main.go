@@ -12,11 +12,10 @@ import (
 )
 
 var (
-	programType  = "server"
-	port         = flag.Int("port", 50051, "GRPC Server Port")
-	followerPort = flag.Int("follower", 50052, "GRPC Follower Port for heartbeat testing")
-	serverAddr   = flag.String("server_address", "localhost:50051", "GRPC Server Address")
-	clientPort   = flag.Int("client_port", 3000, "HTTP Client Port")
+	programType = "server"
+	port        = flag.Int("port", 50051, "GRPC Server Port")
+	serverAddr  = flag.String("server_address", "localhost:50051", "GRPC Server Address")
+	clientPort  = flag.Int("client_port", 3000, "HTTP Client Port")
 )
 
 func main() {
@@ -35,13 +34,20 @@ func main() {
 		webClient.Start()
 		defer webClient.Stop()
 
-	case "heartbeat-lead":
-		log.Println("Starting heartbeat leader...")
+	case "heartbeat":
 		addr := data.NewAddress("localhost", *port)
-		app := application.NewApplication()
 
-		raftNode := core.NewRaftNode(*addr, *app)
-		raftNode.Volatile.ClusterList = append(raftNode.Volatile.ClusterList, *data.NewAddress("localhost", *followerPort))
+		raftNode := core.NewRaftNode(*addr)
+		if *port == 5000 {
+			log.Println("Starting heartbeat leader...")
+			raftNode.Volatile.Type = data.LEADER
+		} else {
+			log.Println("Starting heartbeat follower...")
+		}
+		raftNode.Volatile.ClusterList = []data.ClusterData{
+			{Address: *data.NewAddress("localhost", 5000), MatchIndex: -1, NextIndex: 0},
+			{Address: *data.NewAddress("localhost", 5001), MatchIndex: -1, NextIndex: 0},
+		}
 		raftNode.Volatile.Type = data.LEADER
 		raftNode.InitializeServer()
 
@@ -65,8 +71,8 @@ func main() {
 }
 
 func parseFlags() {
-	flag.Func("type", "'server' (default) or 'heartbeat-lead' or 'terminal-client' or 'web-client'", func(flagValue string) error {
-		if flagValue == "terminal-client" || flagValue == "web-client" || flagValue == "heartbeat-lead" {
+	flag.Func("type", "'server' (default) or 'heartbeat' or 'terminal-client' or 'web-client'", func(flagValue string) error {
+		if flagValue == "terminal-client" || flagValue == "web-client" || flagValue == "heartbeat" {
 			programType = flagValue
 		}
 

@@ -20,9 +20,12 @@ func (rn *RaftNode) InitializeServer() {
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
-	for clusterIdx, addr := range rn.Volatile.ClusterList {
-		log.Printf("%s:%d", addr.Address.IP, addr.Address.Port)
-		conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", addr.Address.IP, addr.Address.Port), opts...)
+	// !: this code will make their own grpc client fail when called, which shouldn't happpen anyway
+	for clusterIdx, clusterData := range rn.Volatile.ClusterList {
+		if clusterData.Address.Equals(&rn.Address) {
+			continue
+		}
+		conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", clusterData.Address.IP, clusterData.Address.Port), opts...)
 
 		if err != nil {
 			log.Fatalf("Failed to dial server: %v", err)

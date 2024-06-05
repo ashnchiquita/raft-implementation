@@ -1,4 +1,3 @@
-: ${MASTER_PORT:=5051}
-: ${MASTER_FOLLOWER:=5052}
+: ${MASTER_PORT:=5000}
 
-go run main.go -type=heartbeat-lead -port=$MASTER_PORT -follower=$MASTER_FOLLOWER
+go run main.go -type=heartbeat-lead -port=$MASTER_PORT

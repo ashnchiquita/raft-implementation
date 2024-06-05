@@ -38,7 +38,9 @@ func (rn *RaftNode) aptries(followerIdx int) error {
 }
 
 func (rn *RaftNode) heartbeat() {
-	for idx := range rn.Volatile.ClusterList {
-		go rn.aptries(idx)
+	for idx, clusterData := range rn.Volatile.ClusterList {
+		if !clusterData.Address.Equals(&rn.Address) {
+			go rn.aptries(idx)
+		}
 	}
 }
