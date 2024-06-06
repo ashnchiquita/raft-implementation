@@ -23,6 +23,9 @@ type RaftNode struct {
 	gRPC.UnimplementedAppendEntriesServiceServer
 	gRPC.UnimplementedHelloServer
 	gRPC.UnimplementedCmdExecutorServer
+
+	// Channels
+	electionInterrupt chan ElectionInterruptMsg
 }
 
 func NewRaftNode(address data.Address) *RaftNode {

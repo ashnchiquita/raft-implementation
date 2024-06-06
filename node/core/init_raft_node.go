@@ -20,6 +20,7 @@ func (rn *RaftNode) InitializeServer() {
 
 func (rn *RaftNode) InitializeAsLeader() {
 	rn.Volatile.Type = data.LEADER
+	rn.resetTimeout()
 	go rn.startReplicatingLogs()
 }
 
@@ -54,7 +55,14 @@ func (rn *RaftNode) startTimerLoop() {
 		time.Sleep(500 * time.Millisecond)
 
 		if rn.timeout.Value <= 0 {
-			// TODO: Handle timeout based on the current node type
+			switch rn.Volatile.Type {
+			case data.LEADER:
+				go rn.startReplicatingLogs()
+			case data.FOLLOWER:
+				go rn.startElection()
+			case data.CANDIDATE:
+				rn.electionInterrupt <- ELECTION_TIMEOUT
+			}
 			log.Printf("Timeout occurred for node %v", rn.Address)
 			break
 		}
