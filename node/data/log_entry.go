@@ -1,6 +1,6 @@
 package data
 
-type Option func(l LogEntry) LogEntry
+type Option func(l *LogEntry)
 
 type LogEntry struct {
 	Term    int    `json:"term"`
@@ -18,15 +18,14 @@ func NewLogEntry(term int, command string, options ...Option) *LogEntry {
 	}
 
 	for _, option := range options {
-		option(*l)
+		option(l)
 	}
 
 	return l
 }
 
 func WithValue(value string) Option {
-	return func(l LogEntry) LogEntry {
+	return func(l *LogEntry) {
 		l.Value = value
-		return l
 	}
 }

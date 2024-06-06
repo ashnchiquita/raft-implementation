@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"log"
 	"strings"
 
 	gRPC "tubes.sister/raft/gRPC/node/core"
@@ -11,7 +10,7 @@ import (
 
 func (rn *RaftNode) AppendEntries(ctx context.Context, args *gRPC.AppendEntriesArgs) (*gRPC.AppendEntriesReply, error) {
 	reply := &gRPC.AppendEntriesReply{Term: int32(rn.Persistence.CurrentTerm)}
-	rn.setTimoutSafe(RandomizeElectionTimeout())
+	rn.resetTimeout()
 
 	// Rule 1 : Reply false if term < currentTerm (§5.1)
 	if int(args.Term) < rn.Persistence.CurrentTerm {
@@ -26,7 +25,7 @@ func (rn *RaftNode) AppendEntries(ctx context.Context, args *gRPC.AppendEntriesA
 
 	// Rule 2: Reply false if log doesn’t contain an
 	// entry at prevLogIndex whose term matches prevLogTerm
-	if len(rn.Persistence.Log) <= int(args.PrevLogIndex) && (int(args.PrevLogIndex) != -1 && rn.Persistence.Log[args.PrevLogIndex].Term != int(args.PrevLogTerm)) {
+	if len(rn.Persistence.Log) <= int(args.PrevLogIndex) && rn.Persistence.Log[args.PrevLogIndex].Term != int(args.PrevLogTerm) {
 		reply.Success = false
 		return reply, nil
 	}
@@ -44,6 +43,7 @@ func (rn *RaftNode) AppendEntries(ctx context.Context, args *gRPC.AppendEntriesA
 			argsEntry := args.Entries[i-int(args.PrevLogIndex)-1]
 			newEntry := data.LogEntry{Term: int(argsEntry.Term), Command: argsEntry.Command, Value: argsEntry.Value}
 			rn.Persistence.Log = append(rn.Persistence.Log, newEntry)
+			rn.Persistence.Serialize()
 		}
 	}
 
@@ -73,7 +73,6 @@ func (rn *RaftNode) AppendEntries(ctx context.Context, args *gRPC.AppendEntriesA
 	rn.Volatile.LeaderAddress.IP = args.LeaderAddress.Ip
 	rn.Volatile.LeaderAddress.Port = int(args.LeaderAddress.Port)
 
-	log.Printf("Node %v updated its log", rn.Address)
 	reply.Success = true
 	return reply, nil
 }

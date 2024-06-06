@@ -34,6 +34,23 @@ func main() {
 		webClient.Start()
 		defer webClient.Stop()
 
+	case "heartbeat":
+		addr := data.NewAddress("localhost", *port)
+
+		raftNode := core.NewRaftNode(*addr)
+		if *port == 5000 {
+			log.Println("Starting heartbeat leader...")
+			raftNode.Volatile.Type = data.LEADER
+		} else {
+			log.Println("Starting heartbeat follower...")
+		}
+		raftNode.Volatile.ClusterList = []data.ClusterData{
+			{Address: *data.NewAddress("localhost", 5000), MatchIndex: -1, NextIndex: 0},
+			{Address: *data.NewAddress("localhost", 5001), MatchIndex: -1, NextIndex: 0},
+		}
+		raftNode.Volatile.Type = data.LEADER
+		raftNode.InitializeServer()
+
 	default: // server
 		log.Println("Starting server...")
 
@@ -42,6 +59,9 @@ func main() {
 		raftNode := core.NewRaftNode(*addr)
 		//! Remove these later
 		if *port == 5000 {
+			raftNode.InitializeAsLeader()
+		}
+		if *port == 5000 {
 			raftNode.Volatile.Type = data.LEADER
 		}
 		raftNode.Volatile.ClusterList = []data.ClusterData{
@@ -49,13 +69,15 @@ func main() {
 			{Address: *data.NewAddress("localhost", 5001), MatchIndex: -1, NextIndex: 0},
 			{Address: *data.NewAddress("localhost", 5002), MatchIndex: -1, NextIndex: 0},
 		}
+
+		raftNode.Volatile.LeaderAddress = *data.NewAddress("localhost", 5000)
 		raftNode.InitializeServer()
 	}
 }
 
 func parseFlags() {
-	flag.Func("type", "'server' (default) or 'terminal-client' or 'web-client'", func(flagValue string) error {
-		if flagValue == "terminal-client" || flagValue == "web-client" {
+	flag.Func("type", "'server' (default) or 'heartbeat' or 'terminal-client' or 'web-client'", func(flagValue string) error {
+		if flagValue == "terminal-client" || flagValue == "web-client" || flagValue == "heartbeat" {
 			programType = flagValue
 		}
 
