@@ -20,6 +20,11 @@ func (rn *RaftNode) AppendEntries(ctx context.Context, args *gRPC.AppendEntriesA
 
 	if int(args.Term) > rn.Persistence.CurrentTerm {
 		rn.Persistence.CurrentTerm = int(args.Term)
+		if rn.Volatile.Type == data.CANDIDATE {
+			rn.electionInterrupt <- HIGHER_TERM
+		}
+
+		// TODO: what to do if it's a leader?
 		rn.Volatile.Type = data.FOLLOWER
 	}
 

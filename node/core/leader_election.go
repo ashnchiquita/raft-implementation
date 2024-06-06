@@ -39,16 +39,16 @@ func (rn *RaftNode) setAsCandidate() {
 }
 
 func (rn *RaftNode) startElection() {
-	c := make(chan bool)
+	restartElection := make(chan bool)
 
-	go rn.election(c)
-	for !<-c {
-		go rn.election(c)
+	go rn.election(restartElection)
+	for <-restartElection {
+		go rn.election(restartElection)
 	}
 }
 
 // Will convert the current node to a candidate (+ reset its timeout) and start the election process
-func (rn *RaftNode) election(c chan bool) {
+func (rn *RaftNode) election(restartElection chan bool) {
 	votes := make(chan voteResult)
 
 	rn.setAsCandidate()
@@ -83,11 +83,10 @@ func (rn *RaftNode) election(c chan bool) {
 
 			switch val {
 			case ELECTION_TIMEOUT:
-				// restart election (auto restart because triggered by timeout)
-				c <- false
+				restartElection <- true
 			case HIGHER_TERM:
 				rn.setAsFollower()
-				c <- true
+				restartElection <- false
 			}
 
 			return
@@ -97,12 +96,14 @@ func (rn *RaftNode) election(c chan bool) {
 				if rn.Volatile.GetVotesCount() >= int(math.Ceil(float64(len(rn.Volatile.ClusterList))/2+1)) {
 					rn.cleanupCandidateState()
 					rn.InitializeAsLeader() // will also reset timeout
+					restartElection <- false
 					return
 				}
 			} else if vote.term > rn.Persistence.CurrentTerm {
 				rn.cleanupCandidateState()
 				rn.Persistence.CurrentTerm = vote.term
 				rn.setAsFollower() // will also reset timeout
+				restartElection <- false
 				return
 			}
 		}
@@ -122,7 +123,7 @@ func (rn *RaftNode) requestVote(voteReq *voteRequest, node *data.ClusterData, vo
 
 	client := gRPC.NewRaftNodeClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), rn.timeout.Value)
+	ctx, cancel := context.WithTimeout(context.Background(), RPC_TIMEOUT)
 
 	defer cancel()
 

@@ -27,6 +27,11 @@ func (rn *RaftNode) RequestVote(args *gRPC.RequestVoteArgs) (*gRPC.RequestVoteRe
 		rn.Persistence.CurrentTerm = int(args.Term)
 		rn.Volatile.LeaderAddress = data.Address{}
 		rn.Volatile.Type = data.FOLLOWER
+		if rn.Volatile.Type == data.CANDIDATE {
+			rn.electionInterrupt <- HIGHER_TERM
+			rn.Persistence.VotedFor = *data.NewZeroAddress()
+		}
+		// TODO: what to do if it's a leader?
 	}
 
 	// Rule 2 : If votedFor is null or candidateId, and candidate’s log is at least as up-to-date as receiver’s log, grant vote (§5.2, §5.4)
