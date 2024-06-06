@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"strconv"
@@ -102,14 +103,18 @@ func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC
 		}
 		return &gRPC.ExecuteRes{Success: true, Value: "OK"}, nil
 	case "getall":
-		var values []string
+		var kvPairs []map[string]string
 		for _, logEntry := range rn.Persistence.Log {
 			if logEntry.Command == "set" {
 				keyAndValue := strings.Split(logEntry.Value, ",")
-				values = append(values, fmt.Sprintf("%s: %s", keyAndValue[0], keyAndValue[1]))
+				kvPairs = append(kvPairs, map[string]string{"key": keyAndValue[0], "value": keyAndValue[1]})
 			}
 		}
-		return &gRPC.ExecuteRes{Success: true, Value: strings.Join(values, ", ")}, nil
+		kvPairsJson, err := json.Marshal(kvPairs)
+		if err != nil {
+			return nil, err
+		}
+		return &gRPC.ExecuteRes{Success: true, Value: string(kvPairsJson)}, nil
 	case "delall":
 		for i, logEntry := range rn.Persistence.Log {
 			if logEntry.Command == "set" {
