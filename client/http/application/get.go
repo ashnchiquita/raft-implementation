@@ -1,33 +1,45 @@
 package application
 
 import (
+	"context"
 	"encoding/json"
-	"github.com/go-chi/chi/v5"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"tubes.sister/raft/client/http/utils"
+	gRPC "tubes.sister/raft/gRPC/node/core"
 )
 
 type GetResponse utils.KeyValResponse
 
-func Get(w http.ResponseWriter, r *http.Request) {
+func Get(client gRPC.CmdExecutorClient, w http.ResponseWriter, r *http.Request) {
 	key := chi.URLParam(r, "key")
+	executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+		Cmd:  "get",
+		Vals: []string{key},
+	})
 
-	// TODO: get key
-
-	dummy := utils.KeyVal{
-		Key:   key,
-		Value: "Dummy value (TODO: get from server)",
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	resp := GetResponse{
 		ResponseMessage: utils.ResponseMessage{
-			Message: "success",
+			Message: "Get Success",
 		},
-		Data: dummy,
+		Data: utils.KeyVal{
+			Key:   key,
+			Value: executeReply.Value,
+		},
+	}
+
+	respBytes, err := json.Marshal(resp)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(resp)
+	w.Write(respBytes)
 }

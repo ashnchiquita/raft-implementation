@@ -1,29 +1,45 @@
 package application
 
 import (
+	"context"
 	"encoding/json"
-	"github.com/go-chi/chi/v5"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"tubes.sister/raft/client/http/utils"
+	gRPC "tubes.sister/raft/gRPC/node/core"
 )
 
-type StrlenResponse struct {
-	utils.ResponseMessage
-	Data int `json:"data"`
-}
+type StrlenResponse utils.KeyValResponse
 
-func Strlen(w http.ResponseWriter, r *http.Request) {
+func Strlen(client gRPC.CmdExecutorClient, w http.ResponseWriter, r *http.Request) {
 	key := chi.URLParam(r, "key")
+	executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+		Cmd:  "strlen",
+		Vals: []string{key},
+	})
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	resp := StrlenResponse{
 		ResponseMessage: utils.ResponseMessage{
-			Message: "success",
+			Message: "Strlen Success",
 		},
-		Data: len(key), // TODO: strlen key
+		Data: utils.KeyVal{
+			Key:   key,
+			Value: executeReply.Value,
+		},
+	}
+
+	respBytes, err := json.Marshal(resp)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(resp)
+	w.Write(respBytes)
 }
