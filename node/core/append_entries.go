@@ -44,6 +44,20 @@ func (rn *RaftNode) AppendEntries(ctx context.Context, args *gRPC.AppendEntriesA
 			newEntry := data.LogEntry{Term: int(argsEntry.Term), Command: argsEntry.Command, Value: argsEntry.Value}
 			rn.Persistence.Log = append(rn.Persistence.Log, newEntry)
 			rn.Persistence.Serialize()
+
+			switch newEntry.Command {
+			case "OLDNEWCONF":
+				err := rn.FollowerEnterJointConsensus(newEntry.Value)
+				if err != nil {
+					return nil, err
+				}
+
+			case "CONF":
+				err := rn.ApplyNewClusterList(newEntry.Value)
+				if err != nil {
+					return nil, err
+				}
+			}
 		}
 	}
 

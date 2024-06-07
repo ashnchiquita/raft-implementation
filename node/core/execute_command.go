@@ -129,6 +129,13 @@ func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC
 			}
 		}
 		return &gRPC.ExecuteRes{Success: true, Value: "OK"}, nil
+	case "config":
+		rn.LeaderEnterJointConsensus(msg.Vals[0])
+		for rn.Volatile.IsJointConsensus {
+			continue
+		}
+
+		return &gRPC.ExecuteRes{Success: true, Value: "OK"}, nil
 	}
 
 	return &gRPC.ExecuteRes{Success: true}, nil

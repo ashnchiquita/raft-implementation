@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"log"
+	"strings"
 
 	gRPC "tubes.sister/raft/gRPC/node/core"
 	"tubes.sister/raft/node/data"
@@ -22,16 +23,41 @@ type replicationResult struct {
 	status resultStatus
 }
 
+func matchedInMajority(clusterList []data.ClusterData, commitIndex int, excludedAddress data.Address) bool {
+	majorityCount := 0
+	excludedAddressInCluster := 0
+	for _, node := range clusterList {
+		if node.Address.Equals(&excludedAddress) {
+			excludedAddressInCluster++
+			continue
+		}
+		// log.Printf("Node %v match index: %v (with pointer: %p)", node.Address, node.MatchIndex, &node)
+		if node.MatchIndex > commitIndex {
+			majorityCount++
+		}
+	}
+
+	majorityThreshold := (len(clusterList) + 1) / 2 // ceil(clusterLength / 2)
+	return majorityCount+excludedAddressInCluster >= majorityThreshold
+}
+
 func (rn *RaftNode) startReplicatingLogs() {
 	c := make(chan replicationResult)
 
 	// Initialize replication to all nodes in the cluster
-	for i := 1; i < len(rn.Volatile.ClusterList); i++ {
+	for _, clusterData := range rn.Volatile.ClusterList {
 		// log.Printf("Send pointer: %p", &rn.Volatile.ClusterList[i])
-		go rn.replicate(&rn.Volatile.ClusterList[i], c)
+		if clusterData.Address.Equals(&rn.Address) {
+			continue
+		}
+		go rn.replicate(&clusterData, c)
 	}
 
-	for range rn.Volatile.ClusterList[1:] {
+	for _, clusterData := range rn.Volatile.ClusterList {
+		if clusterData.Address.Equals(&rn.Address) {
+			continue
+		}
+
 		result := <-c
 		// log.Printf("Replication result: %v", result)
 		// log.Printf("Receive pointer (startReplicatingLogs): %p", result.node)
@@ -45,20 +71,30 @@ func (rn *RaftNode) startReplicatingLogs() {
 		case STAT_SUCCESS:
 			result.node.MatchIndex++
 			result.node.NextIndex++
+		}
+	}
 
-			majorityCount := 0
-			for i := 1; i < len(rn.Volatile.ClusterList); i++ {
-				node := rn.Volatile.ClusterList[i]
-				// log.Printf("Node %v match index: %v (with pointer: %p)", node.Address, node.MatchIndex, &node)
-				if node.MatchIndex > rn.Volatile.CommitIndex {
-					majorityCount++
-				}
-			}
+	if rn.Volatile.IsJointConsensus {
+		majorityInOld := matchedInMajority(rn.Volatile.OldClusterList, rn.Volatile.CommitIndex, rn.Address)
+		majorityInNew := matchedInMajority(rn.Volatile.ClusterList, rn.Volatile.CommitIndex, rn.Address)
 
-			// log.Printf("Majority count: %v", majorityCount)
-			if majorityCount+1 > len(rn.Volatile.ClusterList[1:])/2 {
-				rn.Volatile.CommitIndex++
+		if majorityInOld && majorityInNew {
+			rn.Volatile.CommitIndex++
+		}
+
+		if entry := rn.Persistence.Log[rn.Volatile.CommitIndex]; entry.Command == "OLDNEWCONF" {
+			marshalledNew := strings.Split(entry.Value, ",")[1]
+			newConfig := data.LogEntry{Term: rn.Persistence.CurrentTerm, Command: "CONF", Value: marshalledNew}
+			rn.Persistence.Log = append(rn.Persistence.Log, newConfig)
+			err := rn.ApplyNewClusterList(marshalledNew)
+
+			if err != nil {
+				log.Fatal(err.Error())
 			}
+		}
+	} else {
+		if matchedInMajority(rn.Volatile.ClusterList, rn.Volatile.CommitIndex, rn.Address) {
+			rn.Volatile.CommitIndex++
 		}
 	}
 }
