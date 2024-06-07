@@ -8,32 +8,57 @@ import (
 	"tubes.sister/raft/node/data"
 )
 
+type resultStatus int
+
+const (
+	STAT_SUCCESS resultStatus = iota + 1
+	STAT_FAILED
+	STAT_TIMEOUT
+	STAT_HEARTBEAT
+)
+
 type replicationResult struct {
-	node    *data.ClusterData
-	success string
+	node   *data.ClusterData
+	status resultStatus
 }
 
 func (rn *RaftNode) startReplicatingLogs() {
 	c := make(chan replicationResult)
 
 	// Initialize replication to all nodes in the cluster
-	for _, node := range rn.Volatile.ClusterList[1:] {
-		go rn.replicate(&node, c)
+	for i := 1; i < len(rn.Volatile.ClusterList); i++ {
+		// log.Printf("Send pointer: %p", &rn.Volatile.ClusterList[i])
+		go rn.replicate(&rn.Volatile.ClusterList[i], c)
 	}
 
-	for i := 0; i < len(rn.Volatile.ClusterList[1:]); i++ {
+	for range rn.Volatile.ClusterList[1:] {
 		result := <-c
-		log.Printf("Replication result: %v", result)
+		// log.Printf("Replication result: %v", result)
+		// log.Printf("Receive pointer (startReplicatingLogs): %p", result.node)
 
-		switch result.success {
-		case "timeout":
-		case "hearbeat":
+		switch result.status {
+		case STAT_TIMEOUT:
+		case STAT_HEARTBEAT:
 			continue
-		case "failed":
+		case STAT_FAILED:
 			result.node.NextIndex--
-		case "success":
+		case STAT_SUCCESS:
 			result.node.MatchIndex++
 			result.node.NextIndex++
+
+			majorityCount := 0
+			for i := 1; i < len(rn.Volatile.ClusterList); i++ {
+				node := rn.Volatile.ClusterList[i]
+				// log.Printf("Node %v match index: %v (with pointer: %p)", node.Address, node.MatchIndex, &node)
+				if node.MatchIndex > rn.Volatile.CommitIndex {
+					majorityCount++
+				}
+			}
+
+			// log.Printf("Majority count: %v", majorityCount)
+			if majorityCount+1 > len(rn.Volatile.ClusterList[1:])/2 {
+				rn.Volatile.CommitIndex++
+			}
 		}
 	}
 }
@@ -42,11 +67,9 @@ func (rn *RaftNode) replicate(node *data.ClusterData, c chan replicationResult) 
 	var (
 		sendingEntries    []*gRPC.AppendEntriesArgs_LogEntry
 		prevTerm          int
-		repResult         string
+		resStatus         resultStatus
 		isSendingHearbeat bool
 	)
-
-	log.Printf("Replicating logs to %v", node.Address)
 
 	if node.NextIndex > 0 {
 		prevTerm = rn.Persistence.Log[node.NextIndex-1].Term
@@ -85,17 +108,21 @@ func (rn *RaftNode) replicate(node *data.ClusterData, c chan replicationResult) 
 
 	if err != nil {
 		log.Printf("Error replicating logs to %v: %v", node.Address, err)
-		c <- replicationResult{node: node, success: "timeout"}
+		c <- replicationResult{node: node, status: STAT_TIMEOUT}
 		return
 	} else if isSendingHearbeat {
-		c <- replicationResult{node: node, success: "heartbeat"}
+		log.Printf("Successfully sent heartbeat to %v", node.Address)
+		c <- replicationResult{node: node, status: STAT_HEARTBEAT}
 		return
 	}
 
 	if reply.Success {
-		repResult = "success"
+		log.Printf("Successfully replicated logs to %v", node.Address)
+		resStatus = STAT_SUCCESS
 	} else {
-		repResult = "failed"
+		log.Printf("Failed to replicate logs to %v", node.Address)
+		resStatus = STAT_FAILED
 	}
-	c <- replicationResult{node: node, success: repResult}
+	// log.Printf("Receive pointer (replicate): %p", node)
+	c <- replicationResult{node: node, status: resStatus}
 }

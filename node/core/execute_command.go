@@ -48,6 +48,13 @@ func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC
 	case "set":
 		newLog := data.NewLogEntry(rn.Persistence.CurrentTerm, "set", data.WithValue(fmt.Sprintf("%s,%s", msg.Vals[0], msg.Vals[1])))
 		rn.Persistence.Log = append(rn.Persistence.Log, *newLog)
+		rn.Persistence.Serialize()
+
+		for rn.Volatile.CommitIndex < len(rn.Persistence.Log)-1 {
+			continue
+		}
+
+		rn.Application.Set(msg.Vals[0], msg.Vals[1])
 		return &gRPC.ExecuteRes{Success: true, Value: "OK"}, nil
 	case "get":
 		var value string

@@ -34,7 +34,7 @@ func (rn *RaftNode) InitializeServer() {
 		client := gRPC.NewAppendEntriesServiceClient(conn)
 		rn.Volatile.ClusterList[clusterIdx].Client = client
 		rn.Volatile.ClusterList[clusterIdx].NextIndex = len(rn.Persistence.Log)
-		rn.Volatile.ClusterList[clusterIdx].MatchIndex = 0
+		rn.Volatile.ClusterList[clusterIdx].MatchIndex = -1
 	}
 
 	rn.startTimerLoop()
