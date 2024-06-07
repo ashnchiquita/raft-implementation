@@ -25,7 +25,7 @@ func NewHTTPClient(clientPort int, serverAddr string) *HTTPClient {
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
-	conn, err := grpc.Dial(serverAddr, opts...)
+	conn, err := grpc.NewClient(serverAddr, opts...)
 	if err != nil {
 		log.Fatalf("Failed to dial server: %v", err)
 	}
