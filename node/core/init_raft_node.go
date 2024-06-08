@@ -16,15 +16,17 @@ import (
 // and start the timer loop to monitor timeout
 func (rn *RaftNode) InitializeServer() {
 	go rn.startGRPCServer()
+	rn.SetupClusterClients()
 
+	rn.startTimerLoop()
+}
+
+func (rn *RaftNode) SetupClusterClients() {
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
 	// !: this code will make their own grpc client fail when called, which shouldn't happpen anyway
 	for clusterIdx, clusterData := range rn.Volatile.ClusterList {
-		// if clusterData.Address.Equals(&rn.Address) {
-		// 	continue
-		// }
 		conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", clusterData.Address.IP, clusterData.Address.Port), opts...)
 
 		if err != nil {
@@ -36,8 +38,6 @@ func (rn *RaftNode) InitializeServer() {
 		rn.Volatile.ClusterList[clusterIdx].NextIndex = len(rn.Persistence.Log)
 		rn.Volatile.ClusterList[clusterIdx].MatchIndex = -1
 	}
-
-	rn.startTimerLoop()
 }
 
 func (rn *RaftNode) InitializeAsLeader() {

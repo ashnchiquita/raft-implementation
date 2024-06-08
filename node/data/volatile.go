@@ -21,8 +21,8 @@ func NewVolatile() *Volatile {
 	}
 }
 
-func MarshallClusterList(clusterList []ClusterData) (string, error) {
-	b, err := json.Marshal(clusterList)
+func MarshallConfiguration(addressList []Address) (string, error) {
+	b, err := json.Marshal(addressList)
 	if err != nil {
 		return "", err
 	}
@@ -30,8 +30,8 @@ func MarshallClusterList(clusterList []ClusterData) (string, error) {
 	return string(b), nil
 }
 
-func UnmarshallClusterList(marshalledList string) ([]ClusterData, error) {
-	var data []ClusterData
+func UnmarshallConfiguration(marshalledList string) ([]Address, error) {
+	var data []Address
 	err := json.Unmarshal([]byte(marshalledList), &data)
 
 	return data, err
