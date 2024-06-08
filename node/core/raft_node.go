@@ -34,7 +34,6 @@ func NewRaftNode(address data.Address) *RaftNode {
 	}
 
 	rn.Persistence = *data.InitPersistence(address)
-	log.Printf("Logs: %v", rn.Persistence.Log)
 	rn.resetTimeout()
 	return rn
 }
