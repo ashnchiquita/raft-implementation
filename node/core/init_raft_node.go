@@ -41,6 +41,7 @@ func (rn *RaftNode) InitializeServer() {
 }
 
 func (rn *RaftNode) InitializeAsLeader() {
+	log.Print("Initializing as leader")
 	rn.Volatile.Type = data.LEADER
 	rn.resetTimeout()
 	go rn.startReplicatingLogs()
@@ -58,6 +59,7 @@ func (rn *RaftNode) startGRPCServer() {
 
 	gRPC.RegisterHelloServer(grpcServer, rn)
 	gRPC.RegisterAppendEntriesServiceServer(grpcServer, rn)
+	gRPC.RegisterRaftNodeServer(grpcServer, rn)
 	gRPC.RegisterCmdExecutorServer(grpcServer, rn)
 
 	grpcServer.Serve(lis)

@@ -23,6 +23,7 @@ type RaftNode struct {
 	// RPCs
 	gRPC.UnimplementedAppendEntriesServiceServer
 	gRPC.UnimplementedHelloServer
+	gRPC.UnimplementedRaftNodeServer
 	gRPC.UnimplementedCmdExecutorServer
 
 	// Channels
@@ -31,9 +32,10 @@ type RaftNode struct {
 
 func NewRaftNode(address data.Address) *RaftNode {
 	rn := &RaftNode{
-		Address:     address,
-		Application: *application.NewApplication(),
-		Volatile:    *data.NewVolatile(),
+		Address:           address,
+		Application:       *application.NewApplication(),
+		Volatile:          *data.NewVolatile(),
+		electionInterrupt: make(chan ElectionInterruptMsg),
 	}
 
 	rn.Persistence = *data.InitPersistence(address)
@@ -50,7 +52,7 @@ func (rn *RaftNode) resetTimeout() {
 	case data.CANDIDATE:
 		rn.timeout.Value = RandomizeElectionTimeout()
 	default:
-		rn.timeout.Value = RandomizeElectionTimeout()
+		rn.timeout.Value = RandomizeHeartbeatRecvInterval()
 	}
 	rn.timeout.Mu.Unlock()
 	log.Printf("Timeout reset to: %v", rn.timeout.Value)

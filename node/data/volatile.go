@@ -12,9 +12,9 @@ type Volatile struct {
 // CONSTRUCTOR
 func NewVolatile() *Volatile {
 	return &Volatile{
-		CommitIndex: -1,
-		LastApplied: -1,
-		Type:        FOLLOWER,
+		CommitIndex:   -1,
+		LastApplied:   -1,
+		Type:          FOLLOWER,
 		VotesReceived: make(map[Address]bool),
 	}
 }
@@ -29,4 +29,12 @@ func (v *Volatile) GetVotesCount() int {
 
 func (v *Volatile) AddVote(address Address) {
 	v.VotesReceived[address] = true
+}
+
+func (v *Volatile) GetVoters() []Address {
+	voters := make([]Address, 0)
+	for k := range v.VotesReceived {
+		voters = append(voters, k)
+	}
+	return voters
 }

@@ -15,6 +15,7 @@ import (
 type voteResult struct {
 	term        int
 	voteGranted bool
+	address     data.Address
 }
 
 type voteRequest struct {
@@ -43,17 +44,20 @@ func (rn *RaftNode) startElection() {
 
 	go rn.election(restartElection)
 	for <-restartElection {
+		log.Println("startElection() >> Restarting election because of timeout")
 		go rn.election(restartElection)
 	}
 }
 
 // Will convert the current node to a candidate (+ reset its timeout) and start the election process
 func (rn *RaftNode) election(restartElection chan bool) {
+	log.Println("election() >> === STARTING ELECTION ===")
 	votes := make(chan voteResult)
 
 	rn.setAsCandidate()
 
 	rn.Persistence.CurrentTerm++
+	log.Println("election() >> Current term: ", rn.Persistence.CurrentTerm)
 	rn.Persistence.VotedFor = rn.Address
 	rn.Volatile.AddVote(rn.Address)
 	lastTerm := 0
@@ -79,27 +83,34 @@ func (rn *RaftNode) election(restartElection chan bool) {
 		// accept reply until interrupted
 		select {
 		case val := <-rn.electionInterrupt:
-			rn.cleanupCandidateState()
-
 			switch val {
 			case ELECTION_TIMEOUT:
+				rn.cleanupCandidateState()
+				log.Println("election() >> Election interrupted because of timeout")
 				restartElection <- true
 			case HIGHER_TERM:
-				rn.setAsFollower()
+				log.Println("election() >> Election interrupted because of higher term")
 				restartElection <- false
 			}
 
 			return
 		case vote := <-votes:
+			log.Println("election() >> Vote received from channel")
 			if rn.Volatile.Type == data.CANDIDATE && vote.term == rn.Persistence.CurrentTerm && vote.voteGranted {
-				rn.Volatile.AddVote(rn.Address)
-				if rn.Volatile.GetVotesCount() >= int(math.Ceil(float64(len(rn.Volatile.ClusterList))/2+1)) {
+				log.Println("election() >> Vote granted from ", vote.address)
+				rn.Volatile.AddVote(vote.address)
+				log.Println("election() >> Votes count: ", rn.Volatile.GetVotesCount(), " Cluster count: ", len(rn.Volatile.ClusterList))
+				log.Println("election() >> Voters: ", rn.Volatile.GetVoters())
+				if rn.Volatile.GetVotesCount() >= int(math.Floor(float64(len(rn.Volatile.ClusterList))/2+1)) {
+					log.Println("election() >> Majority reached")
 					rn.cleanupCandidateState()
 					rn.InitializeAsLeader() // will also reset timeout
 					restartElection <- false
 					return
 				}
 			} else if vote.term > rn.Persistence.CurrentTerm {
+				log.Println("election() >> Higher term received (vote term: ", vote.term, ", curr term: ", rn.Persistence.CurrentTerm, ")")
+				log.Println("election() >> Setting as follower")
 				rn.cleanupCandidateState()
 				rn.Persistence.CurrentTerm = vote.term
 				rn.setAsFollower() // will also reset timeout
@@ -111,13 +122,13 @@ func (rn *RaftNode) election(restartElection chan bool) {
 }
 
 func (rn *RaftNode) requestVote(voteReq *voteRequest, node *data.ClusterData, votes chan voteResult) {
-	log.Printf("Requesting vote to to %v", node.Address)
+	log.Printf("requestVote() >> Requesting vote to to %v", node.Address.Port)
 
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 
 	conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", node.Address.IP, node.Address.Port), opts...)
 	if err != nil {
-		log.Fatalf("Failed to dial server: %v", err)
+		log.Fatalf("requestVote() >> Failed to dial server: %v", err)
 	}
 	defer conn.Close()
 
@@ -135,9 +146,11 @@ func (rn *RaftNode) requestVote(voteReq *voteRequest, node *data.ClusterData, vo
 	})
 
 	if err != nil {
-		log.Printf("Error requesting vote to %v: %v", node.Address, err)
+		log.Printf("requestVote() >> Error requesting vote to %v: %v", node.Address, err)
 		return
 	}
 
-	votes <- voteResult{term: rn.Persistence.CurrentTerm, voteGranted: reply.VoteGranted}
+	res := voteResult{term: int(reply.Term), voteGranted: reply.VoteGranted, address: node.Address}
+	log.Println("requestVote() >> Vote result: ", res)
+	votes <- res
 }
