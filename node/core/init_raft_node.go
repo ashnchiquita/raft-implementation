@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	gRPC "tubes.sister/raft/gRPC/node/core"
 	"tubes.sister/raft/node/data"
 )
@@ -16,28 +15,8 @@ import (
 // and start the timer loop to monitor timeout
 func (rn *RaftNode) InitializeServer() {
 	go rn.startGRPCServer()
-	rn.SetupClusterClients()
 
 	rn.startTimerLoop()
-}
-
-func (rn *RaftNode) SetupClusterClients() {
-	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-
-	// !: this code will make their own grpc client fail when called, which shouldn't happpen anyway
-	for clusterIdx, clusterData := range rn.Volatile.ClusterList {
-		conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", clusterData.Address.IP, clusterData.Address.Port), opts...)
-
-		if err != nil {
-			log.Fatalf("Failed to dial server: %v", err)
-		}
-
-		client := gRPC.NewAppendEntriesServiceClient(conn)
-		rn.Volatile.ClusterList[clusterIdx].Client = client
-		rn.Volatile.ClusterList[clusterIdx].NextIndex = len(rn.Persistence.Log)
-		rn.Volatile.ClusterList[clusterIdx].MatchIndex = -1
-	}
 }
 
 func (rn *RaftNode) InitializeAsLeader() {

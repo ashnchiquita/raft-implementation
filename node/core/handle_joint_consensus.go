@@ -30,10 +30,10 @@ func (rn *RaftNode) LeaderEnterJointConsensus(marshalledNew string) error {
 	oldNewConfig := data.LogEntry{Term: rn.Persistence.CurrentTerm, Command: "OLDNEWCONF", Value: fmt.Sprintf("%s,%s", marshalledOld, marshalledNew)}
 	rn.Persistence.Log = append(rn.Persistence.Log, oldNewConfig)
 
+	data.DisconnectClusterList(rn.Volatile.OldClusterList)
 	rn.Volatile.OldClusterList = rn.Volatile.ClusterList
 	rn.Volatile.ClusterList = newClusterList
 	rn.Volatile.IsJointConsensus = true
-	rn.SetupClusterClients()
 
 	return nil
 }
@@ -63,10 +63,11 @@ func (rn *RaftNode) FollowerEnterJointConsensus(marshalledOldNew string) error {
 	oldClusterList := data.ClusterListFromAddresses(oldAddressList, len(rn.Persistence.Log)+1)
 	newClusterList := data.ClusterListFromAddresses(newAddressList, len(rn.Persistence.Log)+1)
 
+	data.DisconnectClusterList(rn.Volatile.OldClusterList)
 	rn.Volatile.OldClusterList = oldClusterList
+	data.DisconnectClusterList(rn.Volatile.ClusterList)
 	rn.Volatile.ClusterList = newClusterList
 	rn.Volatile.IsJointConsensus = true
-	rn.SetupClusterClients()
 
 	return nil
 }
@@ -80,10 +81,11 @@ func (rn *RaftNode) ApplyNewClusterList(marshalledNew string) error {
 
 	newClusterList := data.ClusterListFromAddresses(newAddressList, len(rn.Persistence.Log)+1)
 
+	data.DisconnectClusterList(rn.Volatile.OldClusterList)
 	rn.Volatile.OldClusterList = nil
+	data.DisconnectClusterList(rn.Volatile.ClusterList)
 	rn.Volatile.ClusterList = newClusterList
 	rn.Volatile.IsJointConsensus = false
-	rn.SetupClusterClients()
 
 	return nil
 }
