@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"math"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -101,7 +100,10 @@ func (rn *RaftNode) election(restartElection chan bool) {
 				rn.Volatile.AddVote(vote.address)
 				log.Println("election() >> Votes count: ", rn.Volatile.GetVotesCount(), " Cluster count: ", len(rn.Volatile.ClusterList))
 				log.Println("election() >> Voters: ", rn.Volatile.GetVoters())
-				if rn.Volatile.GetVotesCount() >= int(math.Floor(float64(len(rn.Volatile.ClusterList))/2+1)) {
+
+				if data.MajorityVotedInCluster(rn.Volatile.ClusterList, rn.Volatile.VotesReceived, rn.Address) &&
+					(!rn.Volatile.IsJointConsensus ||
+						data.MajorityVotedInCluster(rn.Volatile.OldClusterList, rn.Volatile.VotesReceived, rn.Address)) {
 					log.Println("election() >> Majority reached")
 					rn.cleanupCandidateState()
 					rn.InitializeAsLeader() // will also reset timeout

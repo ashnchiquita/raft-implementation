@@ -38,7 +38,6 @@ func (rn *RaftNode) RequestVote(ctx context.Context, args *gRPC.RequestVoteArgs)
 			rn.cleanupCandidateState()
 		} else if rn.Volatile.Type == data.LEADER {
 			log.Println("RequestVote() >> Term is higher than current term. Going to follower state from leader.")
-			// TODO: stop log replication
 		}
 		rn.setAsFollower()
 	}

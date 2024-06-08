@@ -57,3 +57,20 @@ func (v *Volatile) GetVoters() []Address {
 	}
 	return voters
 }
+
+func MajorityVotedInCluster(clusterList []ClusterData, votesReceived map[Address]bool, candidateAddress Address) bool {
+	count := 0
+	candidateInCluster := 0
+	for _, clusterData := range clusterList {
+		if clusterData.Address.Equals(&candidateAddress) {
+			candidateInCluster++
+			continue
+		}
+
+		if votesReceived[clusterData.Address] {
+			count++
+		}
+	}
+	threshold := (len(clusterList) + 1) / 2
+	return count+candidateInCluster >= threshold
+}

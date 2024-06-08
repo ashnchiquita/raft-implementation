@@ -72,29 +72,31 @@ func (rn *RaftNode) startReplicatingLogs() {
 			result.node.MatchIndex++
 			result.node.NextIndex++
 		}
-	}
 
-	if rn.Volatile.IsJointConsensus {
-		majorityInOld := matchedInMajority(rn.Volatile.OldClusterList, rn.Volatile.CommitIndex, rn.Address)
-		majorityInNew := matchedInMajority(rn.Volatile.ClusterList, rn.Volatile.CommitIndex, rn.Address)
+		if rn.Volatile.IsJointConsensus {
+			majorityInOld := matchedInMajority(rn.Volatile.OldClusterList, rn.Volatile.CommitIndex, rn.Address)
+			majorityInNew := matchedInMajority(rn.Volatile.ClusterList, rn.Volatile.CommitIndex, rn.Address)
 
-		if majorityInOld && majorityInNew {
-			rn.Volatile.CommitIndex++
-		}
+			if majorityInOld && majorityInNew {
+				rn.Volatile.CommitIndex++
 
-		if entry := rn.Persistence.Log[rn.Volatile.CommitIndex]; entry.Command == "OLDNEWCONF" {
-			marshalledNew := strings.Split(entry.Value, ",")[1]
-			newConfig := data.LogEntry{Term: rn.Persistence.CurrentTerm, Command: "CONF", Value: marshalledNew}
-			rn.Persistence.Log = append(rn.Persistence.Log, newConfig)
-			err := rn.ApplyNewClusterList(marshalledNew)
+				if entry := rn.Persistence.Log[rn.Volatile.CommitIndex]; entry.Command == "OLDNEWCONF" {
+					marshalledNew := strings.Split(entry.Value, ",")[1]
+					newConfig := data.LogEntry{Term: rn.Persistence.CurrentTerm, Command: "CONF", Value: marshalledNew}
+					rn.Persistence.Log = append(rn.Persistence.Log, newConfig)
+					err := rn.ApplyNewClusterList(marshalledNew)
 
-			if err != nil {
-				log.Fatal(err.Error())
+					if err != nil {
+						log.Fatal(err.Error())
+					}
+				}
+				return
 			}
-		}
-	} else {
-		if matchedInMajority(rn.Volatile.ClusterList, rn.Volatile.CommitIndex, rn.Address) {
-			rn.Volatile.CommitIndex++
+		} else {
+			if matchedInMajority(rn.Volatile.ClusterList, rn.Volatile.CommitIndex, rn.Address) {
+				rn.Volatile.CommitIndex++
+				return
+			}
 		}
 	}
 }
@@ -159,6 +161,12 @@ func (rn *RaftNode) replicate(node *data.ClusterData, c chan replicationResult) 
 		log.Printf("Failed to replicate logs to %v", node.Address)
 		resStatus = STAT_FAILED
 	}
+
+	if reply.Term > int32(rn.Persistence.CurrentTerm) {
+		log.Printf("Leader's term is outdated, reverting to follower")
+		rn.setAsCandidate()
+	}
+
 	// log.Printf("Receive pointer (replicate): %p", node)
 	c <- replicationResult{node: node, status: resStatus}
 }
