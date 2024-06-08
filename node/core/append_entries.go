@@ -18,8 +18,16 @@ func (rn *RaftNode) AppendEntries(ctx context.Context, args *gRPC.AppendEntriesA
 		return reply, nil
 	}
 
-	if int(args.Term) > rn.Persistence.CurrentTerm {
+	if int(args.Term) >= rn.Persistence.CurrentTerm {
 		rn.Persistence.CurrentTerm = int(args.Term)
+		if rn.Volatile.Type == data.CANDIDATE {
+			rn.electionInterrupt <- HIGHER_TERM
+			rn.cleanupCandidateState()
+		} else if rn.Volatile.Type == data.LEADER {
+			// TODO: stop log replication
+		}
+
+		rn.setAsFollower()
 		rn.Volatile.Type = data.FOLLOWER
 	}
 

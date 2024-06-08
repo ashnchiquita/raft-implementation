@@ -41,8 +41,10 @@ func (rn *RaftNode) SetupClusterClients() {
 }
 
 func (rn *RaftNode) InitializeAsLeader() {
+	log.Print("Initializing as leader")
 	rn.Volatile.Type = data.LEADER
 	rn.resetTimeout()
+	go rn.startReplicatingLogs()
 }
 
 // Starts the GRPC server
@@ -57,6 +59,7 @@ func (rn *RaftNode) startGRPCServer() {
 
 	gRPC.RegisterHelloServer(grpcServer, rn)
 	gRPC.RegisterAppendEntriesServiceServer(grpcServer, rn)
+	gRPC.RegisterRaftNodeServer(grpcServer, rn)
 	gRPC.RegisterCmdExecutorServer(grpcServer, rn)
 
 	grpcServer.Serve(lis)
@@ -76,18 +79,16 @@ func (rn *RaftNode) startTimerLoop() {
 		time.Sleep(500 * time.Millisecond)
 
 		if rn.timeout.Value <= 0 {
-			// TODO: Handle timeout based on the current node type
-
 			switch rn.Volatile.Type {
 			case data.LEADER:
 				rn.startReplicatingLogs()
 				rn.resetTimeout()
 			case data.FOLLOWER:
-				log.Println("start election")
-				return
+				go rn.startElection()
+			case data.CANDIDATE:
+				rn.electionInterrupt <- ELECTION_TIMEOUT
 			}
-
-			// break
+			log.Printf("Timeout occurred for node %v", rn.Address)
 		}
 	}
 }
