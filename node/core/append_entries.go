@@ -23,10 +23,11 @@ func (rn *RaftNode) AppendEntries(ctx context.Context, args *gRPC.AppendEntriesA
 		if rn.Volatile.Type == data.CANDIDATE {
 			rn.electionInterrupt <- HIGHER_TERM
 			rn.cleanupCandidateState()
-			rn.setAsFollower()
+		} else if rn.Volatile.Type == data.LEADER {
+			// TODO: stop log replication
 		}
 
-		// TODO: what to do if it's a leader?
+		rn.setAsFollower()
 		rn.Volatile.Type = data.FOLLOWER
 	}
 
