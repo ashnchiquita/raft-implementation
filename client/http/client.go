@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"tubes.sister/raft/client/http/application"
 	"tubes.sister/raft/client/http/cluster"
+	gRPC "tubes.sister/raft/gRPC/node/core"
 )
 
 type HTTPClient struct {
@@ -25,7 +26,6 @@ func NewHTTPClient(clientPort int, serverAddr string) *HTTPClient {
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
 	conn, err := grpc.NewClient(serverAddr, opts...)
-
 	if err != nil {
 		log.Fatalf("Failed to dial server: %v", err)
 	}
@@ -37,19 +37,31 @@ func NewHTTPClient(clientPort int, serverAddr string) *HTTPClient {
 		AllowedMethods: []string{"GET", "DELETE", "PUT", "OPTIONS", "PATCH"},
 	}))
 
-	// Application Router
+	client := gRPC.NewCmdExecutorClient(conn)
+
 	router.Route("/app", func(r chi.Router) {
-		r.Get("/{key}", application.Get)
-		r.Put("/", application.Set)
-		r.Get("/{key}/strlen", application.Strlen)
-		r.Delete("/{key}", application.Del)
-		r.Patch("/", application.Append)
-
-		r.Get("/", application.GetAll)
-		r.Delete("/", application.DelAll)
+		r.Get("/{key}", func(w http.ResponseWriter, r *http.Request) {
+			application.Get(client, w, r)
+		})
+		r.Put("/", func(w http.ResponseWriter, r *http.Request) {
+			application.Set(client, w, r)
+		})
+		r.Get("/{key}/strlen", func(w http.ResponseWriter, r *http.Request) {
+			application.Strlen(client, w, r)
+		})
+		r.Delete("/{key}", func(w http.ResponseWriter, r *http.Request) {
+			application.Delete(client, w, r)
+		})
+		r.Patch("/", func(w http.ResponseWriter, r *http.Request) {
+			application.Append(client, w, r)
+		})
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			application.GetAll(client, w, r)
+		})
+		r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
+			application.DelAll(client, w, r)
+		})
 	})
-
-	// Cluster Router
 	router.Route("/cluster", func(r chi.Router) {
 		r.Get("/ping", cluster.Ping)
 	})
@@ -59,9 +71,11 @@ func NewHTTPClient(clientPort int, serverAddr string) *HTTPClient {
 
 func (hc *HTTPClient) Start() {
 	log.Printf("Web client started at port %d", hc.port)
-	http.ListenAndServe(fmt.Sprintf(":%d", hc.port), hc.router)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", hc.port), hc.router))
 }
 
 func (hc *HTTPClient) Stop() {
-	hc.conn.Close()
+	if err := hc.conn.Close(); err != nil {
+		log.Fatalf("Failed to close connection: %v", err)
+	}
 }

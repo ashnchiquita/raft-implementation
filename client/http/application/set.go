@@ -1,26 +1,50 @@
 package application
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
 	"tubes.sister/raft/client/http/utils"
+	gRPC "tubes.sister/raft/gRPC/node/core"
 )
 
-type SetRequest utils.KeyVal
+type SetResponse utils.KeyValResponse
 
-func Set(w http.ResponseWriter, r *http.Request) {
-	var setReq SetRequest
-	json.NewDecoder(r.Body).Decode(&setReq)
-
-	if setReq.Key == "" || setReq.Value == "" {
-		msg := "key and value cannot be empty"
-		utils.SendResponseMessage(w, msg, http.StatusBadRequest)
+func Set(client gRPC.CmdExecutorClient, w http.ResponseWriter, r *http.Request) {
+	var kv utils.KeyVal
+	err := json.NewDecoder(r.Body).Decode(&kv)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// TODO: set key
+	executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+		Cmd:  "set",
+		Vals: []string{kv.Key, kv.Value},
+	})
 
-	msg := "success"
-	utils.SendResponseMessage(w, msg, http.StatusOK)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	resp := SetResponse{
+		ResponseMessage: utils.ResponseMessage{
+			Message: "Set Success",
+		},
+		Data: utils.KeyVal{
+			Key:   kv.Key,
+			Value: executeReply.Value,
+		},
+	}
+
+	respBytes, err := json.Marshal(resp)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(respBytes)
 }

@@ -1,36 +1,49 @@
 package application
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
 	"tubes.sister/raft/client/http/utils"
+	gRPC "tubes.sister/raft/gRPC/node/core"
 )
 
-type GetAllResponse utils.KeyValsResponse
+type GetAllResponse struct {
+	utils.ResponseMessage
+	Data []utils.KeyVal `json:"data"`
+}
 
-func GetAll(w http.ResponseWriter, r *http.Request) {
-	// TODO: get all keys
+func GetAll(client gRPC.CmdExecutorClient, w http.ResponseWriter, r *http.Request) {
+	executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+		Cmd: "getall",
+	})
 
-	dummy := []utils.KeyVal{
-		{
-			Key:   "Dummy key 1",
-			Value: "Dummy value 1 (TODO: get from server)",
-		},
-		{
-			Key:   "Dummy key 2",
-			Value: "Dummy value 2 (TODO: get from server)",
-		},
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var data []utils.KeyVal
+	err = json.Unmarshal([]byte(executeReply.Value), &data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	resp := GetAllResponse{
 		ResponseMessage: utils.ResponseMessage{
-			Message: "success",
+			Message: "GetAll Success",
 		},
-		Data: dummy,
+		Data: data,
+	}
+
+	respBytes, err := json.Marshal(resp)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(resp)
+	w.Write(respBytes)
 }
