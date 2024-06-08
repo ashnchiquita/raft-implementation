@@ -25,6 +25,7 @@ func (rn *RaftNode) RequestVote(args *gRPC.RequestVoteArgs) (*gRPC.RequestVoteRe
 	// Reset election term if Term > currentTerm
 	if int(args.Term) > currTerm {
 		rn.Persistence.CurrentTerm = int(args.Term)
+		currTerm = int(args.Term)
 		rn.Volatile.LeaderAddress = data.Address{}
 		rn.Volatile.Type = data.FOLLOWER
 	}
