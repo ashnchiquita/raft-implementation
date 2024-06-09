@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"tubes.sister/raft/client/http/utils"
+	clientUtils "tubes.sister/raft/client/utils"
 	gRPC "tubes.sister/raft/gRPC/node/core"
 )
 
@@ -27,8 +28,8 @@ func (gc *GRPCClient) Append(w http.ResponseWriter, r *http.Request) {
 	var appendReq AppendRequest
 	json.NewDecoder(r.Body).Decode(&appendReq)
 
-	if appendReq.Key == "" || appendReq.Value == "" {
-		errMsg := "Key and value cannot be empty"
+	if !clientUtils.IsValidPair(appendReq.Key, appendReq.Value) {
+		errMsg := "Key and value cannot be empty, contain spaces, or contain commas"
 		utils.SendResponseMessage(w, errMsg, http.StatusBadRequest)
 		return
 	}

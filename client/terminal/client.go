@@ -10,6 +10,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"tubes.sister/raft/client/utils"
 	gRPC "tubes.sister/raft/gRPC/node/core"
 )
 
@@ -59,7 +60,7 @@ func validateInput(splitted []string) error {
 
 	if splitted[0] == "set" || splitted[0] == "append" {
 		for _, arg := range splitted[1:] {
-			if strings.TrimSpace(arg) == "" {
+			if !utils.IsValidKeyOrValue(strings.TrimSpace(arg)) {
 				return fmt.Errorf("%s command have to have valid key and value", splitted[0])
 			}
 		}
