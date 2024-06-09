@@ -211,7 +211,7 @@ func (rn *RaftNode) replicate(node *data.ClusterData, c chan replicationResult) 
 
 	if reply.Term > int32(rn.Persistence.CurrentTerm) {
 		log.Printf("Leader's term is outdated, reverting to follower")
-		rn.setAsCandidate()
+		rn.setAsFollower()
 	}
 
 	// log.Printf("Receive pointer (replicate): %p", node)
