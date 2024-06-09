@@ -11,6 +11,14 @@ import (
 
 type SetResponse utils.KeyValResponse
 
+// @Summary Set value to key
+// @ID set-value-to-key
+// @Tags         application
+// @Accept       json
+// @Produce      json
+// @Param key body utils.KeyVal true "Key and value to set"
+// @Success 200 {object} SetResponse
+// @Router /app [put]
 func (gc *GRPCClient) Set(w http.ResponseWriter, r *http.Request) {
 	var kv utils.KeyVal
 	err := json.NewDecoder(r.Body).Decode(&kv)

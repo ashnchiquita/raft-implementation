@@ -12,6 +12,14 @@ import (
 
 type AppendResponse utils.KeyValResponse
 
+// @Summary Append value to key
+// @ID append-value-to-key
+// @Tags         application
+// @Accept       json
+// @Produce      json
+// @Param key body utils.KeyVal true "Key and value to append"
+// @Success 200 {object} AppendResponse
+// @Router /app [patch]
 func (gc *GRPCClient) Append(w http.ResponseWriter, r *http.Request) {
 	var req utils.KeyVal
 	body, err := io.ReadAll(r.Body)

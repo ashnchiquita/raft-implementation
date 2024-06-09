@@ -12,6 +12,12 @@ type PingResponse struct {
 	Data string `json:"data"`
 }
 
+// @Summary Ping cluster
+// @ID ping-cluster
+// @Tags         cluster
+// @Produce      json
+// @Success 200 {object} PingResponse
+// @Router /cluster/ping [get]
 func (gc *GRPCClient) Ping(w http.ResponseWriter, r *http.Request) {
 	// TODO: ping server
 

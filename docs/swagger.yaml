@@ -1,0 +1,209 @@
+definitions:
+  handler.AppendResponse:
+    properties:
+      data:
+        $ref: '#/definitions/utils.KeyVal'
+      message:
+        type: string
+    type: object
+  handler.DelAllResponse:
+    properties:
+      data:
+        $ref: '#/definitions/utils.KeyVal'
+      message:
+        type: string
+    type: object
+  handler.DeleteResponse:
+    properties:
+      data:
+        $ref: '#/definitions/utils.KeyVal'
+      message:
+        type: string
+    type: object
+  handler.GetAllResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/utils.KeyVal'
+        type: array
+      message:
+        type: string
+    type: object
+  handler.GetResponse:
+    properties:
+      data:
+        $ref: '#/definitions/utils.KeyVal'
+      message:
+        type: string
+    type: object
+  handler.PingResponse:
+    properties:
+      data:
+        type: string
+      message:
+        type: string
+    type: object
+  handler.SetResponse:
+    properties:
+      data:
+        $ref: '#/definitions/utils.KeyVal'
+      message:
+        type: string
+    type: object
+  handler.StrlenResponse:
+    properties:
+      data:
+        $ref: '#/definitions/utils.KeyVal'
+      message:
+        type: string
+    type: object
+  utils.KeyVal:
+    properties:
+      key:
+        type: string
+      value:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: This is the API documentation for the web client of the application.
+  title: Web Client API
+  version: "1.0"
+paths:
+  /app:
+    delete:
+      operationId: delete-all
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.DelAllResponse'
+      summary: Delete all key-value pairs
+      tags:
+      - application
+    get:
+      operationId: get-all
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.GetAllResponse'
+      summary: Get all key-value pairs
+      tags:
+      - application
+    patch:
+      consumes:
+      - application/json
+      operationId: append-value-to-key
+      parameters:
+      - description: Key and value to append
+        in: body
+        name: key
+        required: true
+        schema:
+          $ref: '#/definitions/utils.KeyVal'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.AppendResponse'
+      summary: Append value to key
+      tags:
+      - application
+    put:
+      consumes:
+      - application/json
+      operationId: set-value-to-key
+      parameters:
+      - description: Key and value to set
+        in: body
+        name: key
+        required: true
+        schema:
+          $ref: '#/definitions/utils.KeyVal'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.SetResponse'
+      summary: Set value to key
+      tags:
+      - application
+  /app/{key}:
+    delete:
+      operationId: delete-value-by-key
+      parameters:
+      - description: Key to delete
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.DeleteResponse'
+      summary: Delete value by key
+      tags:
+      - application
+    get:
+      operationId: get-value-by-key
+      parameters:
+      - description: Key to get
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.GetResponse'
+      summary: Get value by key
+      tags:
+      - application
+  /app/{key}/strlen:
+    get:
+      operationId: get-value-string-length-by-key
+      parameters:
+      - description: Key to get
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.StrlenResponse'
+      summary: Get value string length by key
+      tags:
+      - application
+  /cluster/ping:
+    get:
+      operationId: ping-cluster
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.PingResponse'
+      summary: Ping cluster
+      tags:
+      - cluster
+swagger: "2.0"

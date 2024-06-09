@@ -12,6 +12,13 @@ import (
 
 type GetResponse utils.KeyValResponse
 
+// @Summary Get value by key
+// @ID get-value-by-key
+// @Tags         application
+// @Produce      json
+// @Param key path string true "Key to get"
+// @Success 200 {object} GetResponse
+// @Router /app/{key} [get]
 func (gc *GRPCClient) Get(w http.ResponseWriter, r *http.Request) {
 	key := chi.URLParam(r, "key")
 	executeReply, err := (*gc.client).ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{

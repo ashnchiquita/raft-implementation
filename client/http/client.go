@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	httpSwagger "github.com/swaggo/http-swagger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"tubes.sister/raft/client/http/handler"
@@ -22,6 +23,9 @@ type HTTPClient struct {
 	client handler.GRPCClient
 }
 
+// @title Web Client API
+// @version 1.0
+// @description This is the API documentation for the web client of the application.
 func NewHTTPClient(clientPort int, serverAddr string) *HTTPClient {
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -40,6 +44,8 @@ func NewHTTPClient(clientPort int, serverAddr string) *HTTPClient {
 
 	client := gRPC.NewCmdExecutorClient(conn)
 	hc := &HTTPClient{conn: conn, router: router, port: clientPort, client: *handler.NewGRPCClient(&client)}
+
+	hc.router.Get("/swagger/*", httpSwagger.WrapHandler)
 
 	hc.router.Route("/app", func(r chi.Router) {
 		r.Get("/{key}", hc.client.Get)

@@ -14,6 +14,12 @@ type GetAllResponse struct {
 	Data []utils.KeyVal `json:"data"`
 }
 
+// @Summary Get all key-value pairs
+// @ID get-all
+// @Tags         application
+// @Produce      json
+// @Success 200 {object} GetAllResponse
+// @Router /app [get]
 func (gc *GRPCClient) GetAll(w http.ResponseWriter, r *http.Request) {
 	executeReply, err := (*gc.client).ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
 		Cmd: "getall",

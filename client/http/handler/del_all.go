@@ -11,6 +11,12 @@ import (
 
 type DelAllResponse utils.KeyValResponse
 
+// @Summary Delete all key-value pairs
+// @ID delete-all
+// @Tags         application
+// @Produce      json
+// @Success 200 {object} DelAllResponse
+// @Router /app [delete]
 func (gc *GRPCClient) DelAll(w http.ResponseWriter, r *http.Request) {
 	executeReply, err := (*gc.client).ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
 		Cmd: "delall",

@@ -12,6 +12,13 @@ import (
 
 type DeleteResponse utils.KeyValResponse
 
+// @Summary Delete value by key
+// @ID delete-value-by-key
+// @Tags         application
+// @Produce      json
+// @Param key path string true "Key to delete"
+// @Success 200 {object} DeleteResponse
+// @Router /app/{key} [delete]
 func (gc *GRPCClient) Delete(w http.ResponseWriter, r *http.Request) {
 	key := chi.URLParam(r, "key")
 	executeReply, err := (*gc.client).ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
