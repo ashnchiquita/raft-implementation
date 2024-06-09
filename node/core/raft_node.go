@@ -1,7 +1,6 @@
 package core
 
 import (
-	"log"
 	"time"
 
 	gRPC "tubes.sister/raft/gRPC/node/core"
@@ -31,6 +30,7 @@ type RaftNode struct {
 }
 
 func NewRaftNode(address data.Address) *RaftNode {
+
 	rn := &RaftNode{
 		Address:           address,
 		Application:       *application.NewApplication(),
@@ -40,6 +40,8 @@ func NewRaftNode(address data.Address) *RaftNode {
 
 	rn.Persistence = *data.InitPersistence(address)
 	rn.resetTimeout()
+
+	rn.logf("Starting RaftNode at %v", address)
 	return rn
 }
 
@@ -54,7 +56,7 @@ func (rn *RaftNode) resetTimeout() {
 		rn.timeout.Value = RandomizeHeartbeatRecvInterval()
 	}
 	rn.timeout.Mu.Unlock()
-	log.Printf("Timeout reset to: %v", rn.timeout.Value)
+	rn.logf("Timeout reset to: %v", rn.timeout.Value)
 }
 
 func (rn *RaftNode) setTimoutSafe(val time.Duration) {

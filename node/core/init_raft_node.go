@@ -20,7 +20,7 @@ func (rn *RaftNode) InitializeServer() {
 }
 
 func (rn *RaftNode) InitializeAsLeader() {
-	log.Print("Initializing as leader")
+	rn.announcef("========= Initializing as leader =========")
 	rn.Volatile.Type = data.LEADER
 	rn.resetTimeout()
 	go rn.startReplicatingLogs()
@@ -67,7 +67,7 @@ func (rn *RaftNode) startTimerLoop() {
 			case data.CANDIDATE:
 				rn.electionInterrupt <- ELECTION_TIMEOUT
 			}
-			log.Printf("Timeout occurred for node %v", rn.Address)
+			rn.logf("Timeout occurred for node %v", rn.Address)
 		}
 	}
 }

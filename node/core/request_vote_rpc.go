@@ -11,11 +11,12 @@ import (
 // Updated RequestVote function
 func (rn *RaftNode) RequestVote(ctx context.Context, args *gRPC.RequestVoteArgs) (*gRPC.RequestVoteReply, error) {
 	// Node
+	log := Green + "RequestVote() >> " + Reset
 	currTerm := rn.Persistence.CurrentTerm
 	votedFor := rn.Persistence.VotedFor
 	currLog := rn.Persistence.Log
 	candidateAddr := data.Address{IP: args.CandidateAddress.Ip, Port: int(args.CandidateAddress.Port)}
-	log.Printf("RequestVote() >> RPC received from %v; with Term: %d; Last Log Index: %d; Last log term: %d", args.CandidateAddress.Port, args.Term, args.LastLogIndex, args.LastLogTerm)
+	rn.logf(log+"RPC received from %v; with Term: %d; Last Log Index: %d; Last log term: %d", args.CandidateAddress.Port, args.Term, args.LastLogIndex, args.LastLogTerm)
 
 	// Reply
 	reply := &gRPC.RequestVoteReply{SameCluster: false}
@@ -45,11 +46,11 @@ func (rn *RaftNode) RequestVote(ctx context.Context, args *gRPC.RequestVoteArgs)
 		rn.Persistence.VotedFor = *data.NewZeroAddress()
 
 		if rn.Volatile.Type == data.CANDIDATE {
-			log.Println("RequestVote() >> Term is higher than current term. Going to follower state from candidate.")
+			rn.logf(log + "Term is higher than current term. Going to follower state from candidate.")
 			rn.electionInterrupt <- HIGHER_TERM
 			rn.cleanupCandidateState()
 		} else if rn.Volatile.Type == data.LEADER {
-			log.Println("RequestVote() >> Term is higher than current term. Going to follower state from leader.")
+			rn.logf(log + "Term is higher than current term. Going to follower state from leader.")
 		}
 		rn.setAsFollower()
 	}
@@ -60,13 +61,13 @@ func (rn *RaftNode) RequestVote(ctx context.Context, args *gRPC.RequestVoteArgs)
 		isUpdated(int(args.LastLogIndex), int(args.LastLogTerm), currLog) {
 		rn.Persistence.VotedFor = candidateAddr
 		reply.VoteGranted = true
-		log.Println("RequestVote() >> Vote granted")
+		rn.logf(log + "Vote granted")
 	} else {
 		reply.VoteGranted = false
 		if !(isUpdated(int(args.LastLogIndex), int(args.LastLogTerm), currLog)) {
-			log.Println("RequestVote() >> Vote not granted because candidate's log is not up-to-date")
+			rn.logf(log + "Vote not granted because candidate's log is not up-to-date")
 		} else {
-			log.Println("RequestVote() >> Vote not granted because votedFor is not null or candidateId")
+			rn.logf(log + "Vote not granted because votedFor is not null or candidateId")
 		}
 	}
 
@@ -84,7 +85,7 @@ func isUpdated(lastLogIndex int, lastLogTerm int, currLog []data.LogEntry) bool 
 	}
 
 	lastEntry := currLog[len(currLog)-1]
-	log.Printf("RequestVote() >> Last entry index: %d; Last Entry term: %d", len(currLog)-1, lastEntry.Term)
+	log.Printf(Green+"RequestVote() >> "+Reset+"Last entry index: %d; Last Entry term: %d", len(currLog)-1, lastEntry.Term)
 	if lastLogTerm != lastEntry.Term {
 		return lastLogTerm >= lastEntry.Term
 	}

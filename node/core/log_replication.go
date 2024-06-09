@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	gRPC "tubes.sister/raft/gRPC/node/core"
@@ -54,6 +55,9 @@ func matchedInMajority(clusterList []data.ClusterData, population []data.Address
 func (rn *RaftNode) startReplicatingLogs() {
 	c := make(chan replicationResult)
 
+	// logger
+	memlogs := Cyan + "Memchange >> " + Reset
+
 	// Initialize replication to all nodes in the cluster
 	for idx, clusterData := range rn.Volatile.ClusterList {
 		if clusterData.Address.Equals(&rn.Address) {
@@ -61,7 +65,7 @@ func (rn *RaftNode) startReplicatingLogs() {
 		}
 		go rn.replicate(&rn.Volatile.ClusterList[idx], c)
 	}
-	log.Printf("Current address: %v", rn.Address)
+	// log.Printf("Current address: %v", rn.Address)
 
 	isCommitted := false
 
@@ -96,10 +100,10 @@ func (rn *RaftNode) startReplicatingLogs() {
 				committedEntry := rn.Persistence.Log[rn.Volatile.CommitIndex]
 				if committedEntry.Command == "OLDNEWCONF" {
 					log.Println(rn.Volatile.NewConfig)
-					log.Printf("Memchange >> Committing oldnewconf")
+					rn.logf(memlogs + "Committing oldnewconf")
 					b, err := data.MarshallConfiguration(rn.Volatile.NewConfig)
 					if err != nil {
-						log.Printf("Memchange >> Invalid new config format; err: %s", err.Error())
+						rn.logf(memlogs+"Invalid new config format; err: %s", err.Error())
 					}
 
 					marshalledNew := string(b)
@@ -112,13 +116,13 @@ func (rn *RaftNode) startReplicatingLogs() {
 						log.Fatal(err.Error())
 					}
 				}
-				log.Printf("Log rep >> Commit index now: %d", rn.Volatile.CommitIndex)
+				log.Printf(Purple+"Log Rep >> "+Reset+"Commit index now: %d", rn.Volatile.CommitIndex)
 			}
 		} else {
 			if !isCommitted && matchedInMajority(rn.Volatile.ClusterList, data.ClusterListToAddressList(rn.Volatile.ClusterList), rn.Volatile.CommitIndex, rn.Address) {
 				rn.Volatile.CommitIndex++
 				isCommitted = true
-				log.Printf("Log rep >> Commit index now: %d", rn.Volatile.CommitIndex)
+				log.Printf(Purple+"Log Rep >> "+Reset+"Commit index now: %d", rn.Volatile.CommitIndex)
 			}
 
 			committedEntry := rn.Persistence.Log[rn.Volatile.CommitIndex]
@@ -153,7 +157,7 @@ func (rn *RaftNode) replicate(node *data.ClusterData, c chan replicationResult) 
 	} else {
 		prevTerm = -1
 	}
-	log.Printf("Address: %v; nextIndex: %d; loglen: %d", node.Address, node.NextIndex, len(rn.Persistence.Log))
+	// log.Printf("[CHECK] Address: %v; nextIndex: %d; loglen: %d", node.Address, node.NextIndex, len(rn.Persistence.Log))
 	isSendingHearbeat = node.NextIndex >= len(rn.Persistence.Log)
 
 	ctx, cancel := context.WithTimeout(context.Background(), HEARTBEAT_SEND_INTERVAL)
@@ -172,7 +176,20 @@ func (rn *RaftNode) replicate(node *data.ClusterData, c chan replicationResult) 
 		}
 	}
 
-	log.Printf("Sending Append entries to %v", node.Address)
+	if !isSendingHearbeat {
+		rn.logf(Purple+"AppendEntries >> "+Reset+"Sending Append entries to %v", node.Address)
+
+		rn.announcef("====== REPRESENTATION ======")
+
+		fmt.Println(Purple+"Term log		: ", int32(rn.Persistence.Log[node.NextIndex].Term))
+		fmt.Println(Purple + "Value			: " + rn.Persistence.Log[node.NextIndex].Value)
+		fmt.Println(Purple+"Curr term		: ", rn.Persistence.CurrentTerm)
+		fmt.Println(Purple+"Commited index		:", rn.Volatile.CommitIndex)
+		fmt.Println(Reset)
+	} else {
+		rn.logf(Green+"Heartbeat >> "+Reset+"Sending heartbeat to %v", node.Address)
+	}
+
 	reply, err := node.Client.AppendEntries(ctx, &gRPC.AppendEntriesArgs{
 		LeaderAddress: &gRPC.AppendEntriesArgs_LeaderAddress{
 			Ip:   rn.Address.IP,
@@ -186,31 +203,32 @@ func (rn *RaftNode) replicate(node *data.ClusterData, c chan replicationResult) 
 	})
 
 	if err != nil {
-		log.Printf("Error replicating logs to %v: %v", node.Address, err)
+		rn.logf(Purple+"AppendEntries >> "+Reset+"Error replicating logs to %v: %v", node.Address, err)
 		c <- replicationResult{node: node, status: STAT_TIMEOUT}
 		return
 	} else if isSendingHearbeat {
+
 		if !reply.Success {
-			log.Printf("Heartbeat to %v did not succeed", node.Address)
+			rn.logf("Heartbeat to %v did not succeed", node.Address)
 			c <- replicationResult{node: node, status: STAT_FAILED}
 			return
 		} else {
-			log.Printf("Successfully sent heartbeat to %v", node.Address)
+			rn.logf("Successfully sent heartbeat to %v", node.Address)
 		}
 		c <- replicationResult{node: node, status: STAT_HEARTBEAT}
 		return
 	}
 
 	if reply.Success {
-		log.Printf("Successfully replicated logs to %v", node.Address)
+		rn.logf("Successfully replicated logs to %v", node.Address)
 		resStatus = STAT_SUCCESS
 	} else {
-		log.Printf("Failed to replicate logs to %v", node.Address)
+		rn.logf("Failed to replicate logs to %v", node.Address)
 		resStatus = STAT_FAILED
 	}
 
 	if reply.Term > int32(rn.Persistence.CurrentTerm) {
-		log.Printf("Leader's term is outdated, reverting to follower")
+		rn.logf("Leader's term is outdated, reverting to follower")
 		rn.setAsFollower()
 	}
 
