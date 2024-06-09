@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 
 	gRPC "tubes.sister/raft/gRPC/node/core"
 	"tubes.sister/raft/node/data"
@@ -52,6 +53,21 @@ func matchedInMajority(clusterList []data.ClusterData, population []data.Address
 	return majorityCount+excludedAddressInCluster >= majorityThreshold
 }
 
+func (rn *RaftNode) applyLogToApplication(matchIndex int) {
+	rn.Volatile.CommitIndex = matchIndex
+	currLog := rn.Persistence.Log[matchIndex]
+	splitted := strings.Split(currLog.Value, ",")
+
+	switch currLog.Command {
+	case "SET":
+		rn.Application.Set(splitted[0], splitted[1])
+	case "DEL":
+		rn.Application.Del(splitted[0])
+	case "APPEND":
+		rn.Application.Append(splitted[0], splitted[1])
+	}
+}
+
 func (rn *RaftNode) startReplicatingLogs() {
 	c := make(chan replicationResult)
 
@@ -94,7 +110,8 @@ func (rn *RaftNode) startReplicatingLogs() {
 			majorityInNew := matchedInMajority(rn.Volatile.ClusterList, rn.Volatile.NewConfig, rn.Volatile.CommitIndex, rn.Address)
 
 			if majorityInOld && majorityInNew && !isCommitted {
-				rn.Volatile.CommitIndex++
+				// rn.Volatile.CommitIndex++
+				rn.applyLogToApplication(result.node.MatchIndex)
 				isCommitted = true
 
 				committedEntry := rn.Persistence.Log[rn.Volatile.CommitIndex]
@@ -120,7 +137,8 @@ func (rn *RaftNode) startReplicatingLogs() {
 			}
 		} else {
 			if !isCommitted && matchedInMajority(rn.Volatile.ClusterList, data.ClusterListToAddressList(rn.Volatile.ClusterList), rn.Volatile.CommitIndex, rn.Address) {
-				rn.Volatile.CommitIndex++
+				// rn.Volatile.CommitIndex++
+				rn.applyLogToApplication(result.node.MatchIndex)
 				isCommitted = true
 				log.Printf(Purple+"Log Rep >> "+Reset+"Commit index now: %d", rn.Volatile.CommitIndex)
 
