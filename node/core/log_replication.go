@@ -63,6 +63,8 @@ func (rn *RaftNode) startReplicatingLogs() {
 	}
 	log.Printf("Current address: %v", rn.Address)
 
+	isCommitted := false
+
 	for _, clusterData := range rn.Volatile.ClusterList {
 		if clusterData.Address.Equals(&rn.Address) {
 			continue
@@ -87,10 +89,12 @@ func (rn *RaftNode) startReplicatingLogs() {
 			majorityInOld := matchedInMajority(rn.Volatile.ClusterList, rn.Volatile.OldConfig, rn.Volatile.CommitIndex, rn.Address)
 			majorityInNew := matchedInMajority(rn.Volatile.ClusterList, rn.Volatile.NewConfig, rn.Volatile.CommitIndex, rn.Address)
 
-			if majorityInOld && majorityInNew {
+			if majorityInOld && majorityInNew && !isCommitted {
 				rn.Volatile.CommitIndex++
+				isCommitted = true
 
-				if entry := rn.Persistence.Log[rn.Volatile.CommitIndex]; entry.Command == "OLDNEWCONF" {
+				committedEntry := rn.Persistence.Log[rn.Volatile.CommitIndex]
+				if committedEntry.Command == "OLDNEWCONF" {
 					log.Println(rn.Volatile.NewConfig)
 					log.Printf("Memchange >> Committing oldnewconf")
 					b, err := data.MarshallConfiguration(rn.Volatile.NewConfig)
@@ -108,12 +112,29 @@ func (rn *RaftNode) startReplicatingLogs() {
 						log.Fatal(err.Error())
 					}
 				}
-				// return
+				log.Printf("Log rep >> Commit index now: %d", rn.Volatile.CommitIndex)
 			}
 		} else {
-			if matchedInMajority(rn.Volatile.ClusterList, data.ClusterListToAddressList(rn.Volatile.ClusterList), rn.Volatile.CommitIndex, rn.Address) {
+			if !isCommitted && matchedInMajority(rn.Volatile.ClusterList, data.ClusterListToAddressList(rn.Volatile.ClusterList), rn.Volatile.CommitIndex, rn.Address) {
 				rn.Volatile.CommitIndex++
-				// return
+				isCommitted = true
+				log.Printf("Log rep >> Commit index now: %d", rn.Volatile.CommitIndex)
+			}
+
+			committedEntry := rn.Persistence.Log[rn.Volatile.CommitIndex]
+			if committedEntry.Command == "CONF" {
+				amIInClusterList := false
+				for _, node := range rn.Volatile.ClusterList {
+					if node.Address.Equals(&rn.Address) {
+						amIInClusterList = true
+						break
+					}
+				}
+
+				if !amIInClusterList {
+					data.DisconnectClusterList(rn.Volatile.ClusterList)
+					log.Fatalf("Exiting program, current server is no longer a part of the cluster")
+				}
 			}
 		}
 	}
