@@ -74,3 +74,4 @@ func parseFlags() {
 }
 
 // config [{"ip":"localhost","port":5000},{"ip":"localhost","port":5001}]
+// config [{"ip":"127.0.0.1","port":5000},{"ip":"127.0.0.1","port":5001}]

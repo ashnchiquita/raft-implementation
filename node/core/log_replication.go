@@ -47,7 +47,7 @@ func matchedInMajority(clusterList []data.ClusterData, population []data.Address
 		}
 	}
 
-	majorityThreshold := (len(population) + 1) / 2 // ceil(populationLength / 2)
+	majorityThreshold := len(population)/2 + 1 // ceil(populationLength / 2)
 	return majorityCount+excludedAddressInCluster >= majorityThreshold
 }
 
@@ -56,12 +56,12 @@ func (rn *RaftNode) startReplicatingLogs() {
 
 	// Initialize replication to all nodes in the cluster
 	for idx, clusterData := range rn.Volatile.ClusterList {
-		// log.Printf("Send pointer: %p", &rn.Volatile.ClusterList[i])
 		if clusterData.Address.Equals(&rn.Address) {
 			continue
 		}
 		go rn.replicate(&rn.Volatile.ClusterList[idx], c)
 	}
+	log.Printf("Current address: %v", rn.Address)
 
 	for _, clusterData := range rn.Volatile.ClusterList {
 		if clusterData.Address.Equals(&rn.Address) {
@@ -92,28 +92,28 @@ func (rn *RaftNode) startReplicatingLogs() {
 
 				if entry := rn.Persistence.Log[rn.Volatile.CommitIndex]; entry.Command == "OLDNEWCONF" {
 					log.Println(rn.Volatile.NewConfig)
-					log.Fatalf("Memchange >> Committing oldnewconf")
+					log.Printf("Memchange >> Committing oldnewconf")
 					b, err := data.MarshallConfiguration(rn.Volatile.NewConfig)
 					if err != nil {
 						log.Printf("Memchange >> Invalid new config format; err: %s", err.Error())
 					}
 
-					log.Fatalf("Memchange >> Here")
 					marshalledNew := string(b)
 					newConfig := data.LogEntry{Term: rn.Persistence.CurrentTerm, Command: "CONF", Value: marshalledNew}
 					rn.Persistence.Log = append(rn.Persistence.Log, newConfig)
+					rn.Persistence.Serialize()
 					err = rn.ApplyNewClusterList(marshalledNew)
 
 					if err != nil {
 						log.Fatal(err.Error())
 					}
 				}
-				return
+				// return
 			}
 		} else {
 			if matchedInMajority(rn.Volatile.ClusterList, data.ClusterListToAddressList(rn.Volatile.ClusterList), rn.Volatile.CommitIndex, rn.Address) {
 				rn.Volatile.CommitIndex++
-				return
+				// return
 			}
 		}
 	}
@@ -151,6 +151,7 @@ func (rn *RaftNode) replicate(node *data.ClusterData, c chan replicationResult) 
 		}
 	}
 
+	log.Printf("Sending Append entries to %v", node.Address)
 	reply, err := node.Client.AppendEntries(ctx, &gRPC.AppendEntriesArgs{
 		LeaderAddress: &gRPC.AppendEntriesArgs_LeaderAddress{
 			Ip:   rn.Address.IP,

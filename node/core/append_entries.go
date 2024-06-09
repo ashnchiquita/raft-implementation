@@ -12,6 +12,7 @@ import (
 func (rn *RaftNode) AppendEntries(ctx context.Context, args *gRPC.AppendEntriesArgs) (*gRPC.AppendEntriesReply, error) {
 	reply := &gRPC.AppendEntriesReply{Term: int32(rn.Persistence.CurrentTerm)}
 	rn.resetTimeout()
+	log.Printf("Append entries >> Received append entries term: %d; prevlogindex: %d; prevlogterm: %d", args.Term, args.PrevLogIndex, args.PrevLogTerm)
 
 	// Rule 1 : Reply false if term < currentTerm (§5.1)
 	if int(args.Term) < rn.Persistence.CurrentTerm {
@@ -30,7 +31,7 @@ func (rn *RaftNode) AppendEntries(ctx context.Context, args *gRPC.AppendEntriesA
 
 	// Rule 2: Reply false if log doesn’t contain an
 	// entry at prevLogIndex whose term matches prevLogTerm
-	if len(rn.Persistence.Log) > int(args.PrevLogIndex) && int(args.PrevLogIndex) >= 0 && rn.Persistence.Log[args.PrevLogIndex].Term != int(args.PrevLogTerm) {
+	if len(rn.Persistence.Log)-1 < int(args.PrevLogIndex) || (len(rn.Persistence.Log) > int(args.PrevLogIndex) && int(args.PrevLogIndex) >= 0 && rn.Persistence.Log[args.PrevLogIndex].Term != int(args.PrevLogTerm)) {
 		reply.Success = false
 		return reply, nil
 	}

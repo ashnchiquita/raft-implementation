@@ -35,6 +35,7 @@ func (rn *RaftNode) LeaderEnterJointConsensus(marshalledNew string) error {
 
 	oldNewConfig := data.LogEntry{Term: rn.Persistence.CurrentTerm, Command: "OLDNEWCONF", Value: marshalledOldNew}
 	rn.Persistence.Log = append(rn.Persistence.Log, oldNewConfig)
+	rn.Persistence.Serialize()
 
 	rn.Volatile.IsJointConsensus = true
 

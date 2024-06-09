@@ -85,7 +85,7 @@ func MajorityVotedInCluster(clusterList []ClusterData, population []Address, vot
 			count++
 		}
 	}
-	threshold := (len(clusterList) + 1) / 2
+	threshold := len(clusterList)/2 + 1
 	return count+candidateInCluster >= threshold
 }
 
