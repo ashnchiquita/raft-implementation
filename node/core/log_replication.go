@@ -141,21 +141,21 @@ func (rn *RaftNode) startReplicatingLogs() {
 				rn.applyLogToApplication(result.node.MatchIndex)
 				isCommitted = true
 				log.Printf(Purple+"Log Rep >> "+Reset+"Commit index now: %d", rn.Volatile.CommitIndex)
-			}
 
-			committedEntry := rn.Persistence.Log[rn.Volatile.CommitIndex]
-			if committedEntry.Command == "CONF" {
-				amIInClusterList := false
-				for _, node := range rn.Volatile.ClusterList {
-					if node.Address.Equals(&rn.Address) {
-						amIInClusterList = true
-						break
+				committedEntry := rn.Persistence.Log[rn.Volatile.CommitIndex]
+				if committedEntry.Command == "CONF" {
+					amIInClusterList := false
+					for _, node := range rn.Volatile.ClusterList {
+						if node.Address.Equals(&rn.Address) {
+							amIInClusterList = true
+							break
+						}
 					}
-				}
 
-				if !amIInClusterList {
-					data.DisconnectClusterList(rn.Volatile.ClusterList)
-					log.Fatalf("Exiting program, current server is no longer a part of the cluster")
+					if !amIInClusterList {
+						data.DisconnectClusterList(rn.Volatile.ClusterList)
+						log.Fatalf("Exiting program, current server is no longer a part of the cluster")
+					}
 				}
 			}
 		}
