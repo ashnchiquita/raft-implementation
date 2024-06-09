@@ -1,4 +1,14 @@
 definitions:
+  data.LogEntry:
+    properties:
+      command:
+        type: string
+      term:
+        type: integer
+      value:
+        description: Optional field (maybe zero Value)
+        type: string
+    type: object
   handler.AppendRequest:
     properties:
       key:
@@ -40,6 +50,15 @@ definitions:
     properties:
       data:
         type: string
+      message:
+        type: string
+    type: object
+  handler.RequestLogResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/data.LogEntry'
+        type: array
       message:
         type: string
     type: object
@@ -241,6 +260,23 @@ paths:
       summary: Get value string length by key
       tags:
       - application
+  /cluster/log:
+    get:
+      operationId: request-log
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.RequestLogResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ResponseMessage'
+      summary: Request cluster leader's log
+      tags:
+      - cluster
   /cluster/ping:
     get:
       operationId: ping-cluster
@@ -251,6 +287,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/handler.PingResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ResponseMessage'
       summary: Ping cluster
       tags:
       - cluster

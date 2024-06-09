@@ -96,7 +96,15 @@ func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC
 		rn.Persistence.Log = append(rn.Persistence.Log, *newLog)
 		rn.Application.DelAll()
 		return &gRPC.ExecuteRes{Success: true, Value: "OK"}, nil
+	case "ping":
+		return &gRPC.ExecuteRes{Success: true, Value: "PONG"}, nil
+	case "log":
+		logStr, err := rn.Persistence.GetPrettyLog()
+		if err != nil {
+			return &gRPC.ExecuteRes{Success: false, Value: "Failed to get log"}, nil
+		}
+		return &gRPC.ExecuteRes{Success: true, Value: logStr}, nil
+	default:
+		return &gRPC.ExecuteRes{Success: false, Value: "Invalid command"}, nil
 	}
-
-	return &gRPC.ExecuteRes{Success: true}, nil
 }

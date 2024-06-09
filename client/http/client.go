@@ -58,6 +58,7 @@ func NewHTTPClient(clientPort int, serverAddr string) *HTTPClient {
 	})
 	hc.router.Route("/cluster", func(r chi.Router) {
 		r.Get("/ping", hc.client.Ping)
+		r.Get("/log", hc.client.RequestLog)
 	})
 
 	return hc

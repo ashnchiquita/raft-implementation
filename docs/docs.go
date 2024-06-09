@@ -256,6 +256,32 @@ const docTemplate = `{
                 }
             }
         },
+        "/cluster/log": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cluster"
+                ],
+                "summary": "Request cluster leader's log",
+                "operationId": "request-log",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.RequestLogResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ResponseMessage"
+                        }
+                    }
+                }
+            }
+        },
         "/cluster/ping": {
             "get": {
                 "produces": [
@@ -272,12 +298,33 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/handler.PingResponse"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ResponseMessage"
+                        }
                     }
                 }
             }
         }
     },
     "definitions": {
+        "data.LogEntry": {
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string"
+                },
+                "term": {
+                    "type": "integer"
+                },
+                "value": {
+                    "description": "Optional field (maybe zero Value)",
+                    "type": "string"
+                }
+            }
+        },
         "handler.AppendRequest": {
             "type": "object",
             "properties": {
@@ -341,6 +388,20 @@ const docTemplate = `{
             "properties": {
                 "data": {
                     "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.RequestLogResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/data.LogEntry"
+                    }
                 },
                 "message": {
                     "type": "string"
