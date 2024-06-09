@@ -22,16 +22,54 @@ type replicationResult struct {
 	status resultStatus
 }
 
+func matchedInMajority(clusterList []data.ClusterData, population []data.Address, commitIndex int, excludedAddress data.Address) bool {
+	majorityCount := 0
+	excludedAddressInCluster := 0
+
+	addressMap := make(map[data.Address]bool)
+
+	for _, address := range population {
+		addressMap[address] = true
+	}
+
+	for _, node := range clusterList {
+		if _, ok := addressMap[node.Address]; !ok {
+			continue
+		}
+
+		if node.Address.Equals(&excludedAddress) {
+			excludedAddressInCluster++
+			continue
+		}
+		// log.Printf("Node %v match index: %v (with pointer: %p)", node.Address, node.MatchIndex, &node)
+		if node.MatchIndex > commitIndex {
+			majorityCount++
+		}
+	}
+
+	majorityThreshold := len(population)/2 + 1 // ceil(populationLength / 2)
+	return majorityCount+excludedAddressInCluster >= majorityThreshold
+}
+
 func (rn *RaftNode) startReplicatingLogs() {
 	c := make(chan replicationResult)
 
 	// Initialize replication to all nodes in the cluster
-	for i := 1; i < len(rn.Volatile.ClusterList); i++ {
-		// log.Printf("Send pointer: %p", &rn.Volatile.ClusterList[i])
-		go rn.replicate(&rn.Volatile.ClusterList[i], c)
+	for idx, clusterData := range rn.Volatile.ClusterList {
+		if clusterData.Address.Equals(&rn.Address) {
+			continue
+		}
+		go rn.replicate(&rn.Volatile.ClusterList[idx], c)
 	}
+	log.Printf("Current address: %v", rn.Address)
 
-	for range rn.Volatile.ClusterList[1:] {
+	isCommitted := false
+
+	for _, clusterData := range rn.Volatile.ClusterList {
+		if clusterData.Address.Equals(&rn.Address) {
+			continue
+		}
+
 		result := <-c
 		// log.Printf("Replication result: %v", result)
 		// log.Printf("Receive pointer (startReplicatingLogs): %p", result.node)
@@ -45,19 +83,58 @@ func (rn *RaftNode) startReplicatingLogs() {
 		case STAT_SUCCESS:
 			result.node.MatchIndex++
 			result.node.NextIndex++
+		}
 
-			majorityCount := 0
-			for i := 1; i < len(rn.Volatile.ClusterList); i++ {
-				node := rn.Volatile.ClusterList[i]
-				// log.Printf("Node %v match index: %v (with pointer: %p)", node.Address, node.MatchIndex, &node)
-				if node.MatchIndex > rn.Volatile.CommitIndex {
-					majorityCount++
+		if rn.Volatile.IsJointConsensus {
+			majorityInOld := matchedInMajority(rn.Volatile.ClusterList, rn.Volatile.OldConfig, rn.Volatile.CommitIndex, rn.Address)
+			majorityInNew := matchedInMajority(rn.Volatile.ClusterList, rn.Volatile.NewConfig, rn.Volatile.CommitIndex, rn.Address)
+
+			if majorityInOld && majorityInNew && !isCommitted {
+				rn.Volatile.CommitIndex++
+				isCommitted = true
+
+				committedEntry := rn.Persistence.Log[rn.Volatile.CommitIndex]
+				if committedEntry.Command == "OLDNEWCONF" {
+					log.Println(rn.Volatile.NewConfig)
+					log.Printf("Memchange >> Committing oldnewconf")
+					b, err := data.MarshallConfiguration(rn.Volatile.NewConfig)
+					if err != nil {
+						log.Printf("Memchange >> Invalid new config format; err: %s", err.Error())
+					}
+
+					marshalledNew := string(b)
+					newConfig := data.LogEntry{Term: rn.Persistence.CurrentTerm, Command: "CONF", Value: marshalledNew}
+					rn.Persistence.Log = append(rn.Persistence.Log, newConfig)
+					rn.Persistence.Serialize()
+					err = rn.ApplyNewClusterList(marshalledNew)
+
+					if err != nil {
+						log.Fatal(err.Error())
+					}
 				}
+				log.Printf("Log rep >> Commit index now: %d", rn.Volatile.CommitIndex)
+			}
+		} else {
+			if !isCommitted && matchedInMajority(rn.Volatile.ClusterList, data.ClusterListToAddressList(rn.Volatile.ClusterList), rn.Volatile.CommitIndex, rn.Address) {
+				rn.Volatile.CommitIndex++
+				isCommitted = true
+				log.Printf("Log rep >> Commit index now: %d", rn.Volatile.CommitIndex)
 			}
 
-			// log.Printf("Majority count: %v", majorityCount)
-			if majorityCount+1 > len(rn.Volatile.ClusterList[1:])/2 {
-				rn.Volatile.CommitIndex++
+			committedEntry := rn.Persistence.Log[rn.Volatile.CommitIndex]
+			if committedEntry.Command == "CONF" {
+				amIInClusterList := false
+				for _, node := range rn.Volatile.ClusterList {
+					if node.Address.Equals(&rn.Address) {
+						amIInClusterList = true
+						break
+					}
+				}
+
+				if !amIInClusterList {
+					data.DisconnectClusterList(rn.Volatile.ClusterList)
+					log.Fatalf("Exiting program, current server is no longer a part of the cluster")
+				}
 			}
 		}
 	}
@@ -76,6 +153,7 @@ func (rn *RaftNode) replicate(node *data.ClusterData, c chan replicationResult) 
 	} else {
 		prevTerm = -1
 	}
+	log.Printf("Address: %v; nextIndex: %d; loglen: %d", node.Address, node.NextIndex, len(rn.Persistence.Log))
 	isSendingHearbeat = node.NextIndex >= len(rn.Persistence.Log)
 
 	ctx, cancel := context.WithTimeout(context.Background(), HEARTBEAT_SEND_INTERVAL)
@@ -94,6 +172,7 @@ func (rn *RaftNode) replicate(node *data.ClusterData, c chan replicationResult) 
 		}
 	}
 
+	log.Printf("Sending Append entries to %v", node.Address)
 	reply, err := node.Client.AppendEntries(ctx, &gRPC.AppendEntriesArgs{
 		LeaderAddress: &gRPC.AppendEntriesArgs_LeaderAddress{
 			Ip:   rn.Address.IP,
@@ -111,7 +190,13 @@ func (rn *RaftNode) replicate(node *data.ClusterData, c chan replicationResult) 
 		c <- replicationResult{node: node, status: STAT_TIMEOUT}
 		return
 	} else if isSendingHearbeat {
-		log.Printf("Successfully sent heartbeat to %v", node.Address)
+		if !reply.Success {
+			log.Printf("Heartbeat to %v did not succeed", node.Address)
+			c <- replicationResult{node: node, status: STAT_FAILED}
+			return
+		} else {
+			log.Printf("Successfully sent heartbeat to %v", node.Address)
+		}
 		c <- replicationResult{node: node, status: STAT_HEARTBEAT}
 		return
 	}
@@ -123,6 +208,12 @@ func (rn *RaftNode) replicate(node *data.ClusterData, c chan replicationResult) 
 		log.Printf("Failed to replicate logs to %v", node.Address)
 		resStatus = STAT_FAILED
 	}
+
+	if reply.Term > int32(rn.Persistence.CurrentTerm) {
+		log.Printf("Leader's term is outdated, reverting to follower")
+		rn.setAsFollower()
+	}
+
 	// log.Printf("Receive pointer (replicate): %p", node)
 	c <- replicationResult{node: node, status: resStatus}
 }

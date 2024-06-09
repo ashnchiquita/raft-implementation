@@ -19,9 +19,9 @@ func CreateServerTest(isLeader bool, port int, initialize bool, logs []data.LogE
 	}
 	raftNode.InitializeAsLeader()
 	raftNode.Volatile.ClusterList = []data.ClusterData{
-		{Address: *data.NewAddress("localhost", 5000), MatchIndex: -1, NextIndex: 0},
-		{Address: *data.NewAddress("localhost", 5001), MatchIndex: -1, NextIndex: 0},
-		{Address: *data.NewAddress("localhost", 5002), MatchIndex: -1, NextIndex: 0},
+		*data.NewClusterData(*data.NewAddress("localhost", 5000), 0, -1),
+		*data.NewClusterData(*data.NewAddress("localhost", 5001), 0, -1),
+		*data.NewClusterData(*data.NewAddress("localhost", 5002), 0, -1),
 	}
 
 	raftNode.Volatile.LeaderAddress = *data.NewAddress("localhost", 5000)

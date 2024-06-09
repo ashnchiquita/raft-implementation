@@ -49,7 +49,8 @@ func TestLogReplication(t *testing.T) {
 		t.Errorf("Failed to start new server")
 	}
 
-	targetNode := &data.ClusterData{Address: *data.NewAddress("localhost", 5001), MatchIndex: -1, NextIndex: 0}
+	targetNode := data.NewClusterData(*data.NewAddress("localhost", 5001), 0, -1)
+
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", targetNode.Address.IP, targetNode.Address.Port), opts...)
 	if err != nil {

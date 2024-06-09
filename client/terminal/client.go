@@ -43,8 +43,9 @@ func validateInput(splitted []string) error {
 		"append": 3,
 		"getall": 1,
 		"delall": 1,
-		"log": 1,
+		"log":    1,
 		"exit":   1,
+		"config": 2,
 	}
 
 	commandLen, ok := validCommands[splitted[0]]

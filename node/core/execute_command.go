@@ -45,7 +45,7 @@ func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC
 
 	switch msg.Cmd {
 	case "set":
-		newLog := data.NewLogEntry(rn.Persistence.CurrentTerm, "set", data.WithValue(fmt.Sprintf("%s,%s", msg.Vals[0], msg.Vals[1])))
+		newLog := data.NewLogEntry(rn.Persistence.CurrentTerm, "SET", data.WithValue(fmt.Sprintf("%s,%s", msg.Vals[0], msg.Vals[1])))
 		rn.Persistence.Log = append(rn.Persistence.Log, *newLog)
 		rn.Persistence.Serialize()
 
@@ -95,6 +95,12 @@ func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC
 		newLog := data.NewLogEntry(rn.Persistence.CurrentTerm, "delall")
 		rn.Persistence.Log = append(rn.Persistence.Log, *newLog)
 		rn.Application.DelAll()
+		return &gRPC.ExecuteRes{Success: true, Value: "OK"}, nil
+	case "config":
+		rn.LeaderEnterJointConsensus(msg.Vals[0])
+		for rn.Volatile.IsJointConsensus {
+			continue
+		}
 		return &gRPC.ExecuteRes{Success: true, Value: "OK"}, nil
 	case "ping":
 		return &gRPC.ExecuteRes{Success: true, Value: "PONG"}, nil

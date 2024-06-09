@@ -25,4 +25,5 @@ message RequestVoteArgs {
 message RequestVoteReply {
     int32 term = 1;
     bool voteGranted = 2;
+    bool sameCluster = 3;
 }
