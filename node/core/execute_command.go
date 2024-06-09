@@ -29,18 +29,18 @@ func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC
 		leaderAddr := rn.Volatile.LeaderAddress
 		if leaderAddr.IsZeroAddress() {
 			rn.announcef("Try again later! No leader available.")
-			return &gRPC.ExecuteRes{Success: false}, nil
+			return &gRPC.ExecuteRes{Success: false, Value: "Try again later. No leader available."}, nil
 		} else {
 			leaderClient, leaderConn, err := rn.getLeaderClient()
 			defer leaderConn.Close()
 			if err != nil {
 				rn.logf("Error executing command: %v", err)
+				return &gRPC.ExecuteRes{Success: false, Value: "An error occured."}, nil
 			} else {
 				rn.logf("Successfully connected to leader")
 				return leaderClient.ExecuteCmd(ctx, msg)
 			}
 		}
-		return &gRPC.ExecuteRes{Success: false}, nil
 	}
 
 	switch msg.Cmd {
@@ -55,22 +55,13 @@ func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC
 
 		return &gRPC.ExecuteRes{Success: true, Value: "OK"}, nil
 	case "get": // read
-		value, ok := rn.Application.Get(msg.Vals[0])
-		if !ok {
-			return &gRPC.ExecuteRes{Success: false, Value: ""}, nil
-		}
+		value, _ := rn.Application.Get(msg.Vals[0])
 		return &gRPC.ExecuteRes{Success: true, Value: value}, nil
 	case "strlen": // read
-		length, ok := rn.Application.Strlen(msg.Vals[0])
-		if !ok {
-			return &gRPC.ExecuteRes{Success: false, Value: "0"}, nil
-		}
+		length, _ := rn.Application.Strlen(msg.Vals[0])
 		return &gRPC.ExecuteRes{Success: true, Value: strconv.Itoa(length)}, nil
 	case "del": // write
-		value, ok := rn.Application.Get(msg.Vals[0])
-		if !ok {
-			return &gRPC.ExecuteRes{Success: false, Value: "Key does not exist"}, nil
-		}
+		value, _ := rn.Application.Get(msg.Vals[0])
 		newLog := data.NewLogEntry(rn.Persistence.CurrentTerm, "DEL", data.WithValue(msg.Vals[0]))
 		rn.Persistence.Log = append(rn.Persistence.Log, *newLog)
 		rn.Persistence.Serialize()

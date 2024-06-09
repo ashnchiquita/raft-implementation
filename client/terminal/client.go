@@ -100,6 +100,8 @@ func (tc *TerminalClient) Start() {
 		})
 		if err != nil {
 			fmt.Printf("Error executing command: %v\n", err)
+		} else if !executeReply.Success {
+			fmt.Printf("Error executing command: %v\n", executeReply.Value)
 		} else {
 			fmt.Printf("ExecuteReply: %v\n", executeReply.Value)
 		}
