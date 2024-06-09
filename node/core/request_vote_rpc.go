@@ -23,7 +23,6 @@ func (rn *RaftNode) RequestVote(ctx context.Context, args *gRPC.RequestVoteArgs)
 	// Will tell candidate if the candidate is in the same cluster or not
 	// If candidate is not in a joint consesnsus state, the candidate will
 	// stop it's process when it hits a follower in a different cluster
-	log.Println(rn.Volatile.ClusterList)
 	for _, clusterData := range rn.Volatile.ClusterList {
 		if clusterData.Address.Equals(&candidateAddr) {
 			reply.SameCluster = true
@@ -42,7 +41,8 @@ func (rn *RaftNode) RequestVote(ctx context.Context, args *gRPC.RequestVoteArgs)
 	if int(args.Term) > currTerm {
 		rn.Persistence.CurrentTerm = int(args.Term)
 		currTerm = int(args.Term)
-		rn.Volatile.LeaderAddress = data.Address{}
+		rn.Volatile.LeaderAddress = *data.NewZeroAddress()
+		rn.Persistence.VotedFor = *data.NewZeroAddress()
 
 		if rn.Volatile.Type == data.CANDIDATE {
 			log.Println("RequestVote() >> Term is higher than current term. Going to follower state from candidate.")
@@ -63,10 +63,10 @@ func (rn *RaftNode) RequestVote(ctx context.Context, args *gRPC.RequestVoteArgs)
 		log.Println("RequestVote() >> Vote granted")
 	} else {
 		reply.VoteGranted = false
-		if !candidateAddr.Equals(&votedFor) {
-			log.Println("RequestVote() >> Vote not granted because votedFor is not null or candidateId")
-		} else {
+		if !(isUpdated(int(args.LastLogIndex), int(args.LastLogTerm), currLog)) {
 			log.Println("RequestVote() >> Vote not granted because candidate's log is not up-to-date")
+		} else {
+			log.Println("RequestVote() >> Vote not granted because votedFor is not null or candidateId")
 		}
 	}
 
