@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -91,10 +90,9 @@ func (rn *RaftNode) election(restartElection chan bool) {
 			case ELECTION_TIMEOUT:
 				rn.cleanupCandidateState()
 				log.Println("election() >> Election interrupted because of timeout")
-				if requestedToOtherCluster && !rn.Volatile.IsJointConsensus {
+				if requestedToOtherCluster {
 					data.DisconnectClusterList(rn.Volatile.ClusterList)
-					log.Println("election() >> Candidate isn't included in the cluster anymore")
-					os.Exit(0)
+					log.Fatalln("election() >> Candidate isn't included in the cluster anymore")
 				} else {
 					restartElection <- true
 				}
@@ -107,6 +105,10 @@ func (rn *RaftNode) election(restartElection chan bool) {
 		case vote := <-votes:
 			log.Println("election() >> Vote received from channel")
 			requestedToOtherCluster = requestedToOtherCluster || !vote.sameCluster
+
+			if !vote.sameCluster {
+				log.Println("election() >> Requested vote to other cluster")
+			}
 
 			if rn.Volatile.Type == data.CANDIDATE && vote.term == rn.Persistence.CurrentTerm && vote.voteGranted {
 				log.Println("election() >> Vote granted from ", vote.address)
