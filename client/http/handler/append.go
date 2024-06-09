@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"tubes.sister/raft/client/http/utils"
@@ -40,6 +41,7 @@ func (gc *GRPCClient) Append(w http.ResponseWriter, r *http.Request) {
 		Vals: []string{appendReq.Key, appendReq.Value},
 	})
 	if err != nil {
+		log.Println(errMsg + ": " + err.Error())
 		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
 		return
 	}
@@ -56,6 +58,7 @@ func (gc *GRPCClient) Append(w http.ResponseWriter, r *http.Request) {
 
 	respBytes, err := json.Marshal(resp)
 	if err != nil {
+		log.Println(errMsg + ": " + err.Error())
 		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
 		return
 	}

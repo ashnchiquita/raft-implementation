@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -34,12 +35,14 @@ func (gc *GRPCClient) Strlen(w http.ResponseWriter, r *http.Request) {
 	errMsg := "Failed to get value length of key-value pair"
 
 	if err != nil {
+		log.Println(errMsg + ": " + err.Error())
 		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
 	valLen, err := strconv.Atoi(executeReply.Value)
 	if err != nil {
+		log.Println(errMsg + ": " + err.Error())
 		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
 		return
 	}
@@ -53,6 +56,7 @@ func (gc *GRPCClient) Strlen(w http.ResponseWriter, r *http.Request) {
 
 	respBytes, err := json.Marshal(resp)
 	if err != nil {
+		log.Println(errMsg + ": " + err.Error())
 		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
 		return
 	}

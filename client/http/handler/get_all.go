@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"tubes.sister/raft/client/http/utils"
@@ -29,6 +30,7 @@ func (gc *GRPCClient) GetAll(w http.ResponseWriter, r *http.Request) {
 	errMsg := "Failed to get all key-value pairs"
 
 	if err != nil {
+		log.Println(errMsg + ": " + err.Error())
 		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
 		return
 	}
@@ -36,6 +38,7 @@ func (gc *GRPCClient) GetAll(w http.ResponseWriter, r *http.Request) {
 	var data []utils.KeyVal
 	err = json.Unmarshal([]byte(executeReply.Value), &data)
 	if err != nil {
+		log.Println(errMsg + ": " + err.Error())
 		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
 		return
 	}
@@ -49,6 +52,7 @@ func (gc *GRPCClient) GetAll(w http.ResponseWriter, r *http.Request) {
 
 	respBytes, err := json.Marshal(resp)
 	if err != nil {
+		log.Println(errMsg + ": " + err.Error())
 		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
 		return
 	}

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"log"
 	"net/http"
 
 	"tubes.sister/raft/client/http/utils"
@@ -22,6 +23,7 @@ func (gc *GRPCClient) DelAll(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		errMsg := "Failed to delete all key-value pairs"
+		log.Println(errMsg + ": " + err.Error())
 		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
 		return
 	}
