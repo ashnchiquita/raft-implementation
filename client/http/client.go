@@ -8,10 +8,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	httpSwagger "github.com/swaggo/http-swagger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"tubes.sister/raft/client/http/application"
-	"tubes.sister/raft/client/http/cluster"
+	"tubes.sister/raft/client/http/handler"
+	_ "tubes.sister/raft/docs"
 	gRPC "tubes.sister/raft/gRPC/node/core"
 )
 
@@ -19,8 +20,12 @@ type HTTPClient struct {
 	conn   *grpc.ClientConn
 	router *chi.Mux
 	port   int
+	client handler.GRPCClient
 }
 
+// @title Web Client API
+// @version 1.0
+// @description This is the API documentation for the web client of the application.
 func NewHTTPClient(clientPort int, serverAddr string) *HTTPClient {
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -38,35 +43,25 @@ func NewHTTPClient(clientPort int, serverAddr string) *HTTPClient {
 	}))
 
 	client := gRPC.NewCmdExecutorClient(conn)
+	hc := &HTTPClient{conn: conn, router: router, port: clientPort, client: *handler.NewGRPCClient(&client)}
 
-	router.Route("/app", func(r chi.Router) {
-		r.Get("/{key}", func(w http.ResponseWriter, r *http.Request) {
-			application.Get(client, w, r)
-		})
-		r.Put("/", func(w http.ResponseWriter, r *http.Request) {
-			application.Set(client, w, r)
-		})
-		r.Get("/{key}/strlen", func(w http.ResponseWriter, r *http.Request) {
-			application.Strlen(client, w, r)
-		})
-		r.Delete("/{key}", func(w http.ResponseWriter, r *http.Request) {
-			application.Delete(client, w, r)
-		})
-		r.Patch("/", func(w http.ResponseWriter, r *http.Request) {
-			application.Append(client, w, r)
-		})
-		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			application.GetAll(client, w, r)
-		})
-		r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-			application.DelAll(client, w, r)
-		})
+	hc.router.Get("/swagger/*", httpSwagger.WrapHandler)
+
+	hc.router.Route("/app", func(r chi.Router) {
+		r.Get("/{key}", hc.client.Get)
+		r.Put("/", hc.client.Set)
+		r.Get("/{key}/strlen", hc.client.Strlen)
+		r.Delete("/{key}", hc.client.Delete)
+		r.Patch("/", hc.client.Append)
+		r.Get("/", hc.client.GetAll)
+		r.Delete("/", hc.client.DelAll)
 	})
-	router.Route("/cluster", func(r chi.Router) {
-		r.Get("/ping", cluster.Ping)
+	hc.router.Route("/cluster", func(r chi.Router) {
+		r.Get("/ping", hc.client.Ping)
+		r.Get("/log", hc.client.RequestLog)
 	})
 
-	return &HTTPClient{conn: conn, router: router, port: clientPort}
+	return hc
 }
 
 func (hc *HTTPClient) Start() {

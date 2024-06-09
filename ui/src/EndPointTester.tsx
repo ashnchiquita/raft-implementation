@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import * as apiService from './apiService';
+import { useState } from "react";
+import * as apiService from "./apiService";
 
 const EndpointTester = () => {
-  const [key, setKey] = useState('');
-  const [value, setValue] = useState('');
+  const [key, setKey] = useState("");
+  const [value, setValue] = useState("");
   const [response, setResponse] = useState(null);
 
   const handleGet = async () => {

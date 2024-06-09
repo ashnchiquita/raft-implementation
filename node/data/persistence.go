@@ -1,6 +1,10 @@
 package data
 
-import "tubes.sister/raft/node/utils/serializer"
+import (
+	"encoding/json"
+
+	"tubes.sister/raft/node/utils/serializer"
+)
 
 type Persistence struct {
 	Address 		Address    `json:"address"`
@@ -39,4 +43,10 @@ func InitPersistence(address Address) *Persistence {
 	}
 
 	return data
+}
+
+func (p *Persistence) GetPrettyLog() (string, error) {
+	bytes, err := json.MarshalIndent(p.Log, "", "  ")
+
+	return string(bytes), err
 }

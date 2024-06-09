@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -57,65 +56,35 @@ func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC
 		rn.Application.Set(msg.Vals[0], msg.Vals[1])
 		return &gRPC.ExecuteRes{Success: true, Value: "OK"}, nil
 	case "get":
-		var value string
-		for _, logEntry := range rn.Persistence.Log {
-			if logEntry.Command == "SET" {
-				keyAndValue := strings.Split(logEntry.Value, ",")
-				if keyAndValue[0] == msg.Vals[0] {
-					value = keyAndValue[1]
-				}
-			}
+		value, ok := rn.Application.Get(msg.Vals[0])
+		if !ok {
+			return &gRPC.ExecuteRes{Success: false, Value: ""}, nil
 		}
 		return &gRPC.ExecuteRes{Success: true, Value: value}, nil
 	case "strlen":
-		var value string
-		for _, logEntry := range rn.Persistence.Log {
-			if logEntry.Command == "SET" {
-				keyAndValue := strings.Split(logEntry.Value, ",")
-				if keyAndValue[0] == msg.Vals[0] {
-					value = keyAndValue[1]
-				}
-			}
+		length, ok := rn.Application.Strlen(msg.Vals[0])
+		if !ok {
+			return &gRPC.ExecuteRes{Success: false, Value: "0"}, nil
 		}
-		length := len(value)
 		return &gRPC.ExecuteRes{Success: true, Value: strconv.Itoa(length)}, nil
 	case "del":
-		var value string
-		for i, logEntry := range rn.Persistence.Log {
-			if logEntry.Command == "SET" {
-				keyAndValue := strings.Split(logEntry.Value, ",")
-				if keyAndValue[0] == msg.Vals[0] {
-					value = keyAndValue[1]
-					rn.Persistence.Log[i].Command = "del"
-				}
-			}
+		newLog := data.NewLogEntry(rn.Persistence.CurrentTerm, "del", data.WithValue(msg.Vals[0]))
+		rn.Persistence.Log = append(rn.Persistence.Log, *newLog)
+		value, ok := rn.Application.Del(msg.Vals[0])
+		if !ok {
+			return &gRPC.ExecuteRes{Success: false, Value: "Key does not exist"}, nil
 		}
 		return &gRPC.ExecuteRes{Success: true, Value: value}, nil
 	case "append":
-		var value string
-		var keyExists bool
-		for i, logEntry := range rn.Persistence.Log {
-			if logEntry.Command == "SET" {
-				keyAndValue := strings.Split(logEntry.Value, ",")
-				if keyAndValue[0] == msg.Vals[0] {
-					value = keyAndValue[1] + msg.Vals[1]
-					rn.Persistence.Log[i].Value = msg.Vals[0] + "," + value
-					keyExists = true
-				}
-			}
-		}
-		if !keyExists {
-			newLog := data.NewLogEntry(rn.Persistence.CurrentTerm, "SET", data.WithValue(fmt.Sprintf("%s,%s", msg.Vals[0], msg.Vals[1])))
-			rn.Persistence.Log = append(rn.Persistence.Log, *newLog)
-		}
+		newLog := data.NewLogEntry(rn.Persistence.CurrentTerm, "append", data.WithValue(fmt.Sprintf("%s,%s", msg.Vals[0], msg.Vals[1])))
+		rn.Persistence.Log = append(rn.Persistence.Log, *newLog)
+		rn.Application.Append(msg.Vals[0], msg.Vals[1])
 		return &gRPC.ExecuteRes{Success: true, Value: "OK"}, nil
 	case "getall":
-		var kvPairs []map[string]string
-		for _, logEntry := range rn.Persistence.Log {
-			if logEntry.Command == "SET" {
-				keyAndValue := strings.Split(logEntry.Value, ",")
-				kvPairs = append(kvPairs, map[string]string{"key": keyAndValue[0], "value": keyAndValue[1]})
-			}
+		allData := rn.Application.GetAll()
+		kvPairs := make([]map[string]string, 0, len(allData))
+		for key, value := range allData {
+			kvPairs = append(kvPairs, map[string]string{"key": key, "value": value})
 		}
 		kvPairsJson, err := json.Marshal(kvPairs)
 		if err != nil {
@@ -123,20 +92,25 @@ func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC
 		}
 		return &gRPC.ExecuteRes{Success: true, Value: string(kvPairsJson)}, nil
 	case "delall":
-		for i, logEntry := range rn.Persistence.Log {
-			if logEntry.Command == "SET" {
-				rn.Persistence.Log[i].Command = "del"
-			}
-		}
+		newLog := data.NewLogEntry(rn.Persistence.CurrentTerm, "delall")
+		rn.Persistence.Log = append(rn.Persistence.Log, *newLog)
+		rn.Application.DelAll()
 		return &gRPC.ExecuteRes{Success: true, Value: "OK"}, nil
 	case "config":
 		rn.LeaderEnterJointConsensus(msg.Vals[0])
 		for rn.Volatile.IsJointConsensus {
 			continue
 		}
-
 		return &gRPC.ExecuteRes{Success: true, Value: "OK"}, nil
+	case "ping":
+		return &gRPC.ExecuteRes{Success: true, Value: "PONG"}, nil
+	case "log":
+		logStr, err := rn.Persistence.GetPrettyLog()
+		if err != nil {
+			return &gRPC.ExecuteRes{Success: false, Value: "Failed to get log"}, nil
+		}
+		return &gRPC.ExecuteRes{Success: true, Value: logStr}, nil
+	default:
+		return &gRPC.ExecuteRes{Success: false, Value: "Invalid command"}, nil
 	}
-
-	return &gRPC.ExecuteRes{Success: true}, nil
 }
