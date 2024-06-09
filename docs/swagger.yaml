@@ -1,12 +1,12 @@
 definitions:
-  handler.AppendResponse:
+  handler.AppendRequest:
     properties:
-      data:
-        $ref: '#/definitions/utils.KeyVal'
-      message:
+      key:
+        type: string
+      value:
         type: string
     type: object
-  handler.DelAllResponse:
+  handler.AppendResponse:
     properties:
       data:
         $ref: '#/definitions/utils.KeyVal'
@@ -43,6 +43,13 @@ definitions:
       message:
         type: string
     type: object
+  handler.SetRequest:
+    properties:
+      key:
+        type: string
+      value:
+        type: string
+    type: object
   handler.SetResponse:
     properties:
       data:
@@ -53,7 +60,7 @@ definitions:
   handler.StrlenResponse:
     properties:
       data:
-        $ref: '#/definitions/utils.KeyVal'
+        type: integer
       message:
         type: string
     type: object
@@ -62,6 +69,11 @@ definitions:
       key:
         type: string
       value:
+        type: string
+    type: object
+  utils.ResponseMessage:
+    properties:
+      message:
         type: string
     type: object
 info:
@@ -79,7 +91,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handler.DelAllResponse'
+            $ref: '#/definitions/utils.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ResponseMessage'
       summary: Delete all key-value pairs
       tags:
       - application
@@ -92,6 +108,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/handler.GetAllResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ResponseMessage'
       summary: Get all key-value pairs
       tags:
       - application
@@ -105,7 +125,7 @@ paths:
         name: key
         required: true
         schema:
-          $ref: '#/definitions/utils.KeyVal'
+          $ref: '#/definitions/handler.AppendRequest'
       produces:
       - application/json
       responses:
@@ -113,6 +133,14 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/handler.AppendResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ResponseMessage'
       summary: Append value to key
       tags:
       - application
@@ -126,7 +154,7 @@ paths:
         name: key
         required: true
         schema:
-          $ref: '#/definitions/utils.KeyVal'
+          $ref: '#/definitions/handler.SetRequest'
       produces:
       - application/json
       responses:
@@ -134,6 +162,14 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/handler.SetResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ResponseMessage'
       summary: Set value to key
       tags:
       - application
@@ -153,6 +189,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/handler.DeleteResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ResponseMessage'
       summary: Delete value by key
       tags:
       - application
@@ -171,6 +211,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/handler.GetResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ResponseMessage'
       summary: Get value by key
       tags:
       - application
@@ -190,6 +234,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/handler.StrlenResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ResponseMessage'
       summary: Get value string length by key
       tags:
       - application

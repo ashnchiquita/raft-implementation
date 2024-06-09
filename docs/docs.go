@@ -31,6 +31,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/handler.GetAllResponse"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ResponseMessage"
+                        }
                     }
                 }
             },
@@ -53,7 +59,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/utils.KeyVal"
+                            "$ref": "#/definitions/handler.SetRequest"
                         }
                     }
                 ],
@@ -62,6 +68,18 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/handler.SetResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ResponseMessage"
                         }
                     }
                 }
@@ -79,7 +97,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handler.DelAllResponse"
+                            "$ref": "#/definitions/utils.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ResponseMessage"
                         }
                     }
                 }
@@ -103,7 +127,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/utils.KeyVal"
+                            "$ref": "#/definitions/handler.AppendRequest"
                         }
                     }
                 ],
@@ -112,6 +136,18 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/handler.AppendResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ResponseMessage"
                         }
                     }
                 }
@@ -142,6 +178,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/handler.GetResponse"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ResponseMessage"
+                        }
                     }
                 }
             },
@@ -168,6 +210,12 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/handler.DeleteResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ResponseMessage"
                         }
                     }
                 }
@@ -198,6 +246,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/handler.StrlenResponse"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ResponseMessage"
+                        }
                     }
                 }
             }
@@ -224,18 +278,18 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "handler.AppendResponse": {
+        "handler.AppendRequest": {
             "type": "object",
             "properties": {
-                "data": {
-                    "$ref": "#/definitions/utils.KeyVal"
+                "key": {
+                    "type": "string"
                 },
-                "message": {
+                "value": {
                     "type": "string"
                 }
             }
         },
-        "handler.DelAllResponse": {
+        "handler.AppendResponse": {
             "type": "object",
             "properties": {
                 "data": {
@@ -293,6 +347,17 @@ const docTemplate = `{
                 }
             }
         },
+        "handler.SetRequest": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
         "handler.SetResponse": {
             "type": "object",
             "properties": {
@@ -308,7 +373,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "data": {
-                    "$ref": "#/definitions/utils.KeyVal"
+                    "type": "integer"
                 },
                 "message": {
                     "type": "string"
@@ -322,6 +387,14 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "utils.ResponseMessage": {
+            "type": "object",
+            "properties": {
+                "message": {
                     "type": "string"
                 }
             }
