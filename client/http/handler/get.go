@@ -18,6 +18,7 @@ type GetResponse utils.KeyValResponse
 // @Produce      json
 // @Param key path string true "Key to get"
 // @Success 200 {object} GetResponse
+// @Failure 500 {object} utils.ResponseMessage
 // @Router /app/{key} [get]
 func (gc *GRPCClient) Get(w http.ResponseWriter, r *http.Request) {
 	key := chi.URLParam(r, "key")
@@ -26,8 +27,10 @@ func (gc *GRPCClient) Get(w http.ResponseWriter, r *http.Request) {
 		Vals: []string{key},
 	})
 
+	errMsg := "Failed to get key-value pair"
+
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
@@ -43,7 +46,7 @@ func (gc *GRPCClient) Get(w http.ResponseWriter, r *http.Request) {
 
 	respBytes, err := json.Marshal(resp)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 

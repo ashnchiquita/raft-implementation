@@ -3,13 +3,13 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 
 	"tubes.sister/raft/client/http/utils"
 	gRPC "tubes.sister/raft/gRPC/node/core"
 )
 
+type AppendRequest utils.KeyVal
 type AppendResponse utils.KeyValResponse
 
 // @Summary Append value to key
@@ -17,30 +17,30 @@ type AppendResponse utils.KeyValResponse
 // @Tags         application
 // @Accept       json
 // @Produce      json
-// @Param key body utils.KeyVal true "Key and value to append"
+// @Param key body AppendRequest true "Key and value to append"
 // @Success 200 {object} AppendResponse
+// @Failure 400 {object} utils.ResponseMessage
+// @Failure 500 {object} utils.ResponseMessage
 // @Router /app [patch]
 func (gc *GRPCClient) Append(w http.ResponseWriter, r *http.Request) {
-	var req utils.KeyVal
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	var appendReq AppendRequest
+	json.NewDecoder(r.Body).Decode(&appendReq)
+
+	if appendReq.Key == "" || appendReq.Value == "" {
+		errMsg := "Key and value cannot be empty"
+		utils.SendResponseMessage(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
-	err = json.Unmarshal(body, &req)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	errMsg := "Failed to append value to key"
 
 	// Append the new value
 	appendReply, err := (*gc.client).ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
 		Cmd:  "append",
-		Vals: []string{req.Key, req.Value},
+		Vals: []string{appendReq.Key, appendReq.Value},
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
@@ -49,14 +49,14 @@ func (gc *GRPCClient) Append(w http.ResponseWriter, r *http.Request) {
 			Message: "Append Success",
 		},
 		Data: utils.KeyVal{
-			Key:   req.Key,
+			Key:   appendReq.Key,
 			Value: appendReply.Value,
 		},
 	}
 
 	respBytes, err := json.Marshal(resp)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 

@@ -19,21 +19,24 @@ type GetAllResponse struct {
 // @Tags         application
 // @Produce      json
 // @Success 200 {object} GetAllResponse
+// @Failure 500 {object} utils.ResponseMessage
 // @Router /app [get]
 func (gc *GRPCClient) GetAll(w http.ResponseWriter, r *http.Request) {
 	executeReply, err := (*gc.client).ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
 		Cmd: "getall",
 	})
 
+	errMsg := "Failed to get all key-value pairs"
+
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
 	var data []utils.KeyVal
 	err = json.Unmarshal([]byte(executeReply.Value), &data)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
@@ -46,7 +49,7 @@ func (gc *GRPCClient) GetAll(w http.ResponseWriter, r *http.Request) {
 
 	respBytes, err := json.Marshal(resp)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
