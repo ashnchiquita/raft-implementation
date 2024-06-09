@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"log"
 	"strings"
 
 	gRPC "tubes.sister/raft/gRPC/node/core"
@@ -75,6 +76,8 @@ func (rn *RaftNode) AppendEntries(ctx context.Context, args *gRPC.AppendEntriesA
 		// TODO change when key value mechanism is decided
 		splitRes := strings.Split(currentEntry.Value, ",")
 		key := splitRes[0]
+
+		log.Printf("Append entries >> Received log command: %s; value: %s", currentEntry.Command, currentEntry.Value)
 
 		switch command {
 		case "APPEND":

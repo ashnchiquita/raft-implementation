@@ -10,14 +10,26 @@ import (
 
 // Updated RequestVote function
 func (rn *RaftNode) RequestVote(ctx context.Context, args *gRPC.RequestVoteArgs) (*gRPC.RequestVoteReply, error) {
-	log.Printf("RequestVote() >> RPC received from %v\n", args.CandidateAddress.Port)
 	// Node
 	currTerm := rn.Persistence.CurrentTerm
 	votedFor := rn.Persistence.VotedFor
 	currLog := rn.Persistence.Log
+	candidateAddr := data.Address{IP: args.CandidateAddress.Ip, Port: int(args.CandidateAddress.Port)}
+	log.Printf("RequestVote() >> RPC received from %v; with Term: %d; Last Log Index: %d; Last log term: %d", args.CandidateAddress.Port, args.Term, args.LastLogIndex, args.LastLogTerm)
 
 	// Reply
-	reply := &gRPC.RequestVoteReply{}
+	reply := &gRPC.RequestVoteReply{SameCluster: false}
+
+	// Will tell candidate if the candidate is in the same cluster or not
+	// If candidate is not in a joint consesnsus state, the candidate will
+	// stop it's process when it hits a follower in a different cluster
+	log.Println(rn.Volatile.ClusterList)
+	for _, clusterData := range rn.Volatile.ClusterList {
+		if clusterData.Address.Equals(&candidateAddr) {
+			reply.SameCluster = true
+			break
+		}
+	}
 
 	// Rule 1 : Reply false if term < currentTerm (§5.1)
 	if int(args.Term) < currTerm {
@@ -43,7 +55,6 @@ func (rn *RaftNode) RequestVote(ctx context.Context, args *gRPC.RequestVoteArgs)
 	}
 
 	// Rule 2 : If votedFor is null or candidateId, and candidate’s log is at least as up-to-date as receiver’s log, grant vote (§5.2, §5.4)
-	candidateAddr := data.Address{IP: args.CandidateAddress.Ip, Port: int(args.CandidateAddress.Port)}
 	if (votedFor.IsZeroAddress() ||
 		candidateAddr.Equals(&votedFor)) &&
 		isUpdated(int(args.LastLogIndex), int(args.LastLogTerm), currLog) {
@@ -69,8 +80,9 @@ func isUpdated(lastLogIndex int, lastLogTerm int, currLog []data.LogEntry) bool 
 	}
 
 	lastEntry := currLog[len(currLog)-1]
+	log.Printf("RequestVote() >> Last entry index: %d; Last Entry term: %d", len(currLog)-1, lastEntry.Term)
 	if lastLogTerm != lastEntry.Term {
-		return lastLogTerm > lastEntry.Term
+		return lastLogTerm >= lastEntry.Term
 	}
-	return lastLogIndex >= len(currLog)
+	return lastLogIndex >= len(currLog)-1
 }

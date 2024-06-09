@@ -46,7 +46,7 @@ func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC
 
 	switch msg.Cmd {
 	case "set":
-		newLog := data.NewLogEntry(rn.Persistence.CurrentTerm, "set", data.WithValue(fmt.Sprintf("%s,%s", msg.Vals[0], msg.Vals[1])))
+		newLog := data.NewLogEntry(rn.Persistence.CurrentTerm, "SET", data.WithValue(fmt.Sprintf("%s,%s", msg.Vals[0], msg.Vals[1])))
 		rn.Persistence.Log = append(rn.Persistence.Log, *newLog)
 		rn.Persistence.Serialize()
 
@@ -59,7 +59,7 @@ func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC
 	case "get":
 		var value string
 		for _, logEntry := range rn.Persistence.Log {
-			if logEntry.Command == "set" {
+			if logEntry.Command == "SET" {
 				keyAndValue := strings.Split(logEntry.Value, ",")
 				if keyAndValue[0] == msg.Vals[0] {
 					value = keyAndValue[1]
@@ -70,7 +70,7 @@ func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC
 	case "strlen":
 		var value string
 		for _, logEntry := range rn.Persistence.Log {
-			if logEntry.Command == "set" {
+			if logEntry.Command == "SET" {
 				keyAndValue := strings.Split(logEntry.Value, ",")
 				if keyAndValue[0] == msg.Vals[0] {
 					value = keyAndValue[1]
@@ -82,7 +82,7 @@ func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC
 	case "del":
 		var value string
 		for i, logEntry := range rn.Persistence.Log {
-			if logEntry.Command == "set" {
+			if logEntry.Command == "SET" {
 				keyAndValue := strings.Split(logEntry.Value, ",")
 				if keyAndValue[0] == msg.Vals[0] {
 					value = keyAndValue[1]
@@ -95,7 +95,7 @@ func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC
 		var value string
 		var keyExists bool
 		for i, logEntry := range rn.Persistence.Log {
-			if logEntry.Command == "set" {
+			if logEntry.Command == "SET" {
 				keyAndValue := strings.Split(logEntry.Value, ",")
 				if keyAndValue[0] == msg.Vals[0] {
 					value = keyAndValue[1] + msg.Vals[1]
@@ -105,14 +105,14 @@ func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC
 			}
 		}
 		if !keyExists {
-			newLog := data.NewLogEntry(rn.Persistence.CurrentTerm, "set", data.WithValue(fmt.Sprintf("%s,%s", msg.Vals[0], msg.Vals[1])))
+			newLog := data.NewLogEntry(rn.Persistence.CurrentTerm, "SET", data.WithValue(fmt.Sprintf("%s,%s", msg.Vals[0], msg.Vals[1])))
 			rn.Persistence.Log = append(rn.Persistence.Log, *newLog)
 		}
 		return &gRPC.ExecuteRes{Success: true, Value: "OK"}, nil
 	case "getall":
 		var kvPairs []map[string]string
 		for _, logEntry := range rn.Persistence.Log {
-			if logEntry.Command == "set" {
+			if logEntry.Command == "SET" {
 				keyAndValue := strings.Split(logEntry.Value, ",")
 				kvPairs = append(kvPairs, map[string]string{"key": keyAndValue[0], "value": keyAndValue[1]})
 			}
@@ -124,7 +124,7 @@ func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC
 		return &gRPC.ExecuteRes{Success: true, Value: string(kvPairsJson)}, nil
 	case "delall":
 		for i, logEntry := range rn.Persistence.Log {
-			if logEntry.Command == "set" {
+			if logEntry.Command == "SET" {
 				rn.Persistence.Log[i].Command = "del"
 			}
 		}

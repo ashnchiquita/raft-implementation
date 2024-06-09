@@ -1,6 +1,8 @@
 package data
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 type Volatile struct {
 	LeaderAddress    Address
@@ -9,7 +11,8 @@ type Volatile struct {
 	LastApplied      int
 	Type             NodeType
 	IsJointConsensus bool
-	OldClusterList   []ClusterData
+	OldConfig        []Address
+	NewConfig        []Address
 	VotesReceived    map[Address]bool
 }
 
@@ -58,10 +61,21 @@ func (v *Volatile) GetVoters() []Address {
 	return voters
 }
 
-func MajorityVotedInCluster(clusterList []ClusterData, votesReceived map[Address]bool, candidateAddress Address) bool {
+func MajorityVotedInCluster(clusterList []ClusterData, population []Address, votesReceived map[Address]bool, candidateAddress Address) bool {
 	count := 0
 	candidateInCluster := 0
+
+	addressMap := make(map[Address]bool)
+
+	for _, address := range population {
+		addressMap[address] = true
+	}
+
 	for _, clusterData := range clusterList {
+		if _, ok := addressMap[clusterData.Address]; !ok {
+			continue
+		}
+
 		if clusterData.Address.Equals(&candidateAddress) {
 			candidateInCluster++
 			continue
@@ -73,4 +87,14 @@ func MajorityVotedInCluster(clusterList []ClusterData, votesReceived map[Address
 	}
 	threshold := (len(clusterList) + 1) / 2
 	return count+candidateInCluster >= threshold
+}
+
+func ClusterListToAddressList(clusterList []ClusterData) []Address {
+	addresses := make([]Address, len(clusterList))
+
+	for idx, clusterData := range clusterList {
+		addresses[idx] = clusterData.Address
+	}
+
+	return addresses
 }

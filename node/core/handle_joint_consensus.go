@@ -1,91 +1,104 @@
 package core
 
 import (
-	"errors"
-	"fmt"
-	"strings"
+	"encoding/json"
+	"log"
+	"os"
 
 	"tubes.sister/raft/node/data"
 )
 
 func (rn *RaftNode) LeaderEnterJointConsensus(marshalledNew string) error {
-	oldAddressList := make([]data.Address, len(rn.Volatile.ClusterList))
-	for _, clusterData := range rn.Volatile.ClusterList {
-		oldAddressList = append(oldAddressList, clusterData.Address)
-	}
-
-	marshalledOld, err := data.MarshallConfiguration(oldAddressList)
-
-	if err != nil {
-		return err
-	}
-
+	log.Printf("Memcange >> Leader is entering joint consensus; newconfig: %s", marshalledNew)
 	newConfig, err := data.UnmarshallConfiguration(marshalledNew)
 
 	if err != nil {
 		return err
 	}
 
-	newClusterList := data.ClusterListFromAddresses(newConfig, len(rn.Persistence.Log)+1)
-	oldNewConfig := data.LogEntry{Term: rn.Persistence.CurrentTerm, Command: "OLDNEWCONF", Value: fmt.Sprintf("%s,%s", marshalledOld, marshalledNew)}
+	rn.Volatile.OldConfig = data.ClusterListToAddressList(rn.Volatile.ClusterList)
+	rn.Volatile.NewConfig = newConfig
+
+	data.DisconnectClusterList(rn.Volatile.ClusterList)
+	rn.Volatile.ClusterList = data.ClusterListFromAddresses(
+		data.UnionAddressList(
+			rn.Volatile.NewConfig,
+			rn.Volatile.OldConfig),
+		len(rn.Persistence.Log))
+
+	payload := data.OldNewConfigPayload{New: rn.Volatile.NewConfig, Old: rn.Volatile.OldConfig}
+	marshalledOldNew, err := payload.Marshall()
+
+	if err != nil {
+		return err
+	}
+
+	oldNewConfig := data.LogEntry{Term: rn.Persistence.CurrentTerm, Command: "OLDNEWCONF", Value: marshalledOldNew}
 	rn.Persistence.Log = append(rn.Persistence.Log, oldNewConfig)
 
-	data.DisconnectClusterList(rn.Volatile.OldClusterList)
-	rn.Volatile.OldClusterList = rn.Volatile.ClusterList
-	rn.Volatile.ClusterList = newClusterList
 	rn.Volatile.IsJointConsensus = true
 
 	return nil
 }
 
 func (rn *RaftNode) FollowerEnterJointConsensus(marshalledOldNew string) error {
-	splitMarshalledOldnew := strings.Split(marshalledOldNew, ",")
+	log.Printf("Memcange >> Follower is entering joint consensus; oldnewconfig: %s", marshalledOldNew)
 
-	if len(splitMarshalledOldnew) != 2 {
-		return errors.New("follower received config entry with invalid format")
-	}
+	oldNewConfig, err := data.NewOldConfigPayloadFromJson(marshalledOldNew)
 
-	marshalledOld := splitMarshalledOldnew[0]
-	marshalledNew := splitMarshalledOldnew[1]
-
-	oldAddressList, err := data.UnmarshallConfiguration(marshalledOld)
+	log.Println(oldNewConfig)
 
 	if err != nil {
 		return err
 	}
 
-	newAddressList, err := data.UnmarshallConfiguration(marshalledNew)
+	rn.Volatile.OldConfig = oldNewConfig.Old
+	rn.Volatile.NewConfig = oldNewConfig.New
 
-	if err != nil {
-		return err
-	}
-
-	oldClusterList := data.ClusterListFromAddresses(oldAddressList, len(rn.Persistence.Log)+1)
-	newClusterList := data.ClusterListFromAddresses(newAddressList, len(rn.Persistence.Log)+1)
-
-	data.DisconnectClusterList(rn.Volatile.OldClusterList)
-	rn.Volatile.OldClusterList = oldClusterList
 	data.DisconnectClusterList(rn.Volatile.ClusterList)
-	rn.Volatile.ClusterList = newClusterList
+	rn.Volatile.ClusterList = data.ClusterListFromAddresses(
+		data.UnionAddressList(
+			rn.Volatile.OldConfig,
+			rn.Volatile.NewConfig),
+		len(rn.Persistence.Log))
+
 	rn.Volatile.IsJointConsensus = true
 
 	return nil
 }
 
 func (rn *RaftNode) ApplyNewClusterList(marshalledNew string) error {
+	log.Printf("Memcange >> Applying new config: %s", marshalledNew)
 	newAddressList, err := data.UnmarshallConfiguration(marshalledNew)
 
 	if err != nil {
 		return err
 	}
 
-	newClusterList := data.ClusterListFromAddresses(newAddressList, len(rn.Persistence.Log)+1)
+	newClusterList := data.ClusterListFromAddresses(newAddressList, len(rn.Persistence.Log))
 
-	data.DisconnectClusterList(rn.Volatile.OldClusterList)
-	rn.Volatile.OldClusterList = nil
+	rn.Volatile.OldConfig = nil
+	rn.Volatile.NewConfig = nil
+
 	data.DisconnectClusterList(rn.Volatile.ClusterList)
 	rn.Volatile.ClusterList = newClusterList
 	rn.Volatile.IsJointConsensus = false
 
 	return nil
+}
+
+func (rn *RaftNode) ReadClusterConfigFromFile(path string) error {
+	var addressList []data.Address
+	file, err := os.ReadFile(path)
+
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(file, &addressList)
+
+	data.DisconnectClusterList(rn.Volatile.ClusterList)
+	rn.Volatile.ClusterList = data.ClusterListFromAddresses(addressList, len(rn.Persistence.Log))
+
+	return err
 }

@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"log"
-	"strings"
 
 	gRPC "tubes.sister/raft/gRPC/node/core"
 	"tubes.sister/raft/node/data"
@@ -23,10 +22,21 @@ type replicationResult struct {
 	status resultStatus
 }
 
-func matchedInMajority(clusterList []data.ClusterData, commitIndex int, excludedAddress data.Address) bool {
+func matchedInMajority(clusterList []data.ClusterData, population []data.Address, commitIndex int, excludedAddress data.Address) bool {
 	majorityCount := 0
 	excludedAddressInCluster := 0
+
+	addressMap := make(map[data.Address]bool)
+
+	for _, address := range population {
+		addressMap[address] = true
+	}
+
 	for _, node := range clusterList {
+		if _, ok := addressMap[node.Address]; !ok {
+			continue
+		}
+
 		if node.Address.Equals(&excludedAddress) {
 			excludedAddressInCluster++
 			continue
@@ -37,7 +47,7 @@ func matchedInMajority(clusterList []data.ClusterData, commitIndex int, excluded
 		}
 	}
 
-	majorityThreshold := (len(clusterList) + 1) / 2 // ceil(clusterLength / 2)
+	majorityThreshold := (len(population) + 1) / 2 // ceil(populationLength / 2)
 	return majorityCount+excludedAddressInCluster >= majorityThreshold
 }
 
@@ -45,12 +55,12 @@ func (rn *RaftNode) startReplicatingLogs() {
 	c := make(chan replicationResult)
 
 	// Initialize replication to all nodes in the cluster
-	for _, clusterData := range rn.Volatile.ClusterList {
+	for idx, clusterData := range rn.Volatile.ClusterList {
 		// log.Printf("Send pointer: %p", &rn.Volatile.ClusterList[i])
 		if clusterData.Address.Equals(&rn.Address) {
 			continue
 		}
-		go rn.replicate(&clusterData, c)
+		go rn.replicate(&rn.Volatile.ClusterList[idx], c)
 	}
 
 	for _, clusterData := range rn.Volatile.ClusterList {
@@ -74,17 +84,25 @@ func (rn *RaftNode) startReplicatingLogs() {
 		}
 
 		if rn.Volatile.IsJointConsensus {
-			majorityInOld := matchedInMajority(rn.Volatile.OldClusterList, rn.Volatile.CommitIndex, rn.Address)
-			majorityInNew := matchedInMajority(rn.Volatile.ClusterList, rn.Volatile.CommitIndex, rn.Address)
+			majorityInOld := matchedInMajority(rn.Volatile.ClusterList, rn.Volatile.OldConfig, rn.Volatile.CommitIndex, rn.Address)
+			majorityInNew := matchedInMajority(rn.Volatile.ClusterList, rn.Volatile.NewConfig, rn.Volatile.CommitIndex, rn.Address)
 
 			if majorityInOld && majorityInNew {
 				rn.Volatile.CommitIndex++
 
 				if entry := rn.Persistence.Log[rn.Volatile.CommitIndex]; entry.Command == "OLDNEWCONF" {
-					marshalledNew := strings.Split(entry.Value, ",")[1]
+					log.Println(rn.Volatile.NewConfig)
+					log.Fatalf("Memchange >> Committing oldnewconf")
+					b, err := data.MarshallConfiguration(rn.Volatile.NewConfig)
+					if err != nil {
+						log.Printf("Memchange >> Invalid new config format; err: %s", err.Error())
+					}
+
+					log.Fatalf("Memchange >> Here")
+					marshalledNew := string(b)
 					newConfig := data.LogEntry{Term: rn.Persistence.CurrentTerm, Command: "CONF", Value: marshalledNew}
 					rn.Persistence.Log = append(rn.Persistence.Log, newConfig)
-					err := rn.ApplyNewClusterList(marshalledNew)
+					err = rn.ApplyNewClusterList(marshalledNew)
 
 					if err != nil {
 						log.Fatal(err.Error())
@@ -93,7 +111,7 @@ func (rn *RaftNode) startReplicatingLogs() {
 				return
 			}
 		} else {
-			if matchedInMajority(rn.Volatile.ClusterList, rn.Volatile.CommitIndex, rn.Address) {
+			if matchedInMajority(rn.Volatile.ClusterList, data.ClusterListToAddressList(rn.Volatile.ClusterList), rn.Volatile.CommitIndex, rn.Address) {
 				rn.Volatile.CommitIndex++
 				return
 			}
@@ -114,6 +132,7 @@ func (rn *RaftNode) replicate(node *data.ClusterData, c chan replicationResult) 
 	} else {
 		prevTerm = -1
 	}
+	log.Printf("Address: %v; nextIndex: %d; loglen: %d", node.Address, node.NextIndex, len(rn.Persistence.Log))
 	isSendingHearbeat = node.NextIndex >= len(rn.Persistence.Log)
 
 	ctx, cancel := context.WithTimeout(context.Background(), HEARTBEAT_SEND_INTERVAL)
@@ -149,7 +168,13 @@ func (rn *RaftNode) replicate(node *data.ClusterData, c chan replicationResult) 
 		c <- replicationResult{node: node, status: STAT_TIMEOUT}
 		return
 	} else if isSendingHearbeat {
-		log.Printf("Successfully sent heartbeat to %v", node.Address)
+		if !reply.Success {
+			log.Printf("Heartbeat to %v did not succeed", node.Address)
+			c <- replicationResult{node: node, status: STAT_FAILED}
+			return
+		} else {
+			log.Printf("Successfully sent heartbeat to %v", node.Address)
+		}
 		c <- replicationResult{node: node, status: STAT_HEARTBEAT}
 		return
 	}

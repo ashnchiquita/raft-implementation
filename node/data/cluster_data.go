@@ -37,8 +37,8 @@ func NewClusterData(address Address, nextIndex int, matchIndex int) *ClusterData
 
 func ClusterListFromAddresses(addresses []Address, nextIndex int) []ClusterData {
 	clusterDataList := make([]ClusterData, len(addresses))
-	for _, address := range addresses {
-		clusterDataList = append(clusterDataList, *NewClusterData(address, nextIndex, 0))
+	for idx, address := range addresses {
+		clusterDataList[idx] = *NewClusterData(address, nextIndex, 0)
 	}
 	return clusterDataList
 }

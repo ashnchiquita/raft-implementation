@@ -41,6 +41,7 @@ func validateInput(splitted []string) error {
 		"getall": 1,
 		"delall": 1,
 		"exit":   1,
+		"config": 2,
 	}
 
 	commandLen, ok := validCommands[splitted[0]]
@@ -156,6 +157,17 @@ func (tc *TerminalClient) Start() {
 			fmt.Println("command", input, "called")
 			executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
 				Cmd:  "delall",
+				Vals: splitted[1:],
+			})
+			if err != nil {
+				log.Printf("Error executing command: %v", err)
+			} else {
+				log.Printf("ExecuteReply: %v", executeReply.Value)
+			}
+		case "config":
+			fmt.Println("command", input, "called")
+			executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+				Cmd:  "config",
 				Vals: splitted[1:],
 			})
 			if err != nil {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -15,6 +16,7 @@ type voteResult struct {
 	term        int
 	voteGranted bool
 	address     data.Address
+	sameCluster bool
 }
 
 type voteRequest struct {
@@ -51,6 +53,7 @@ func (rn *RaftNode) startElection() {
 // Will convert the current node to a candidate (+ reset its timeout) and start the election process
 func (rn *RaftNode) election(restartElection chan bool) {
 	log.Println("election() >> === STARTING ELECTION ===")
+	log.Printf("election() >> cluster: %v", rn.Volatile.ClusterList)
 	votes := make(chan voteResult)
 
 	rn.setAsCandidate()
@@ -78,6 +81,8 @@ func (rn *RaftNode) election(restartElection chan bool) {
 		go rn.requestVote(&voteReq, &node, votes)
 	}
 
+	requestedToOtherCluster := false
+
 	for {
 		// accept reply until interrupted
 		select {
@@ -86,7 +91,13 @@ func (rn *RaftNode) election(restartElection chan bool) {
 			case ELECTION_TIMEOUT:
 				rn.cleanupCandidateState()
 				log.Println("election() >> Election interrupted because of timeout")
-				restartElection <- true
+				if requestedToOtherCluster && !rn.Volatile.IsJointConsensus {
+					data.DisconnectClusterList(rn.Volatile.ClusterList)
+					log.Println("election() >> Candidate isn't included in the cluster anymore")
+					os.Exit(0)
+				} else {
+					restartElection <- true
+				}
 			case HIGHER_TERM:
 				log.Println("election() >> Election interrupted because of higher term")
 				restartElection <- false
@@ -95,15 +106,19 @@ func (rn *RaftNode) election(restartElection chan bool) {
 			return
 		case vote := <-votes:
 			log.Println("election() >> Vote received from channel")
+			requestedToOtherCluster = requestedToOtherCluster || !vote.sameCluster
+
 			if rn.Volatile.Type == data.CANDIDATE && vote.term == rn.Persistence.CurrentTerm && vote.voteGranted {
 				log.Println("election() >> Vote granted from ", vote.address)
 				rn.Volatile.AddVote(vote.address)
 				log.Println("election() >> Votes count: ", rn.Volatile.GetVotesCount(), " Cluster count: ", len(rn.Volatile.ClusterList))
 				log.Println("election() >> Voters: ", rn.Volatile.GetVoters())
 
-				if data.MajorityVotedInCluster(rn.Volatile.ClusterList, rn.Volatile.VotesReceived, rn.Address) &&
-					(!rn.Volatile.IsJointConsensus ||
-						data.MajorityVotedInCluster(rn.Volatile.OldClusterList, rn.Volatile.VotesReceived, rn.Address)) {
+				if (rn.Volatile.IsJointConsensus &&
+					data.MajorityVotedInCluster(rn.Volatile.ClusterList, rn.Volatile.OldConfig, rn.Volatile.VotesReceived, rn.Address) &&
+					data.MajorityVotedInCluster(rn.Volatile.ClusterList, rn.Volatile.NewConfig, rn.Volatile.VotesReceived, rn.Address)) ||
+					(!rn.Volatile.IsJointConsensus &&
+						data.MajorityVotedInCluster(rn.Volatile.ClusterList, data.ClusterListToAddressList(rn.Volatile.ClusterList), rn.Volatile.VotesReceived, rn.Address)) {
 					log.Println("election() >> Majority reached")
 					rn.cleanupCandidateState()
 					rn.InitializeAsLeader() // will also reset timeout
@@ -152,7 +167,7 @@ func (rn *RaftNode) requestVote(voteReq *voteRequest, node *data.ClusterData, vo
 		return
 	}
 
-	res := voteResult{term: int(reply.Term), voteGranted: reply.VoteGranted, address: node.Address}
+	res := voteResult{term: int(reply.Term), voteGranted: reply.VoteGranted, address: node.Address, sameCluster: reply.SameCluster}
 	log.Println("requestVote() >> Vote result: ", res)
 	votes <- res
 }

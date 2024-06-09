@@ -36,3 +36,25 @@ func (a *Address) Equals(other *Address) bool {
 func (a *Address) IsZeroAddress() bool {
 	return a.IP == "" && a.Port == 0
 }
+
+func UnionAddressList(a []Address, b []Address) []Address {
+	addressMap := make(map[Address]bool)
+
+	for _, address := range a {
+		addressMap[address] = true
+	}
+
+	for _, address := range b {
+		addressMap[address] = true
+	}
+
+	keys := make([]Address, len(addressMap))
+
+	i := 0
+	for k := range addressMap {
+		keys[i] = k
+		i++
+	}
+
+	return keys
+}
