@@ -67,7 +67,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handler.SetResponse"
+                            "$ref": "#/definitions/utils.ResponseMessage"
                         }
                     },
                     "400": {
@@ -404,17 +404,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "value": {
-                    "type": "string"
-                }
-            }
-        },
-        "handler.SetResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "$ref": "#/definitions/utils.KeyVal"
-                },
-                "message": {
                     "type": "string"
                 }
             }

@@ -12,7 +12,6 @@ import (
 )
 
 type SetRequest utils.KeyVal
-type SetResponse utils.KeyValResponse
 
 // @Summary Set value to key
 // @ID set-value-to-key
@@ -20,7 +19,7 @@ type SetResponse utils.KeyValResponse
 // @Accept       json
 // @Produce      json
 // @Param key body SetRequest true "Key and value to set"
-// @Success 200 {object} SetResponse
+// @Success 200 {object} utils.ResponseMessage
 // @Failure 400 {object} utils.ResponseMessage
 // @Failure 500 {object} utils.ResponseMessage
 // @Router /app [put]
