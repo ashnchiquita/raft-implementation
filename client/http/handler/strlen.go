@@ -1,4 +1,4 @@
-package application
+package handler
 
 import (
 	"context"
@@ -10,12 +10,12 @@ import (
 	gRPC "tubes.sister/raft/gRPC/node/core"
 )
 
-type GetResponse utils.KeyValResponse
+type StrlenResponse utils.KeyValResponse
 
-func Get(client gRPC.CmdExecutorClient, w http.ResponseWriter, r *http.Request) {
+func (gc *GRPCClient) Strlen(w http.ResponseWriter, r *http.Request) {
 	key := chi.URLParam(r, "key")
-	executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
-		Cmd:  "get",
+	executeReply, err := (*gc.client).ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+		Cmd:  "strlen",
 		Vals: []string{key},
 	})
 
@@ -24,9 +24,9 @@ func Get(client gRPC.CmdExecutorClient, w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	resp := GetResponse{
+	resp := StrlenResponse{
 		ResponseMessage: utils.ResponseMessage{
-			Message: "Get Success",
+			Message: "Strlen Success",
 		},
 		Data: utils.KeyVal{
 			Key:   key,

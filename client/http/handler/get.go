@@ -1,19 +1,22 @@
-package application
+package handler
 
 import (
 	"context"
 	"encoding/json"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"tubes.sister/raft/client/http/utils"
 	gRPC "tubes.sister/raft/gRPC/node/core"
 )
 
-type DelAllResponse utils.KeyValResponse
+type GetResponse utils.KeyValResponse
 
-func DelAll(client gRPC.CmdExecutorClient, w http.ResponseWriter, r *http.Request) {
-	executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
-		Cmd: "delall",
+func (gc *GRPCClient) Get(w http.ResponseWriter, r *http.Request) {
+	key := chi.URLParam(r, "key")
+	executeReply, err := (*gc.client).ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+		Cmd:  "get",
+		Vals: []string{key},
 	})
 
 	if err != nil {
@@ -21,12 +24,12 @@ func DelAll(client gRPC.CmdExecutorClient, w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	resp := DelAllResponse{
+	resp := GetResponse{
 		ResponseMessage: utils.ResponseMessage{
-			Message: "DelAll Success",
+			Message: "Get Success",
 		},
 		Data: utils.KeyVal{
-			Key:   "",
+			Key:   key,
 			Value: executeReply.Value,
 		},
 	}

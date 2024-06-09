@@ -1,4 +1,4 @@
-package application
+package handler
 
 import (
 	"context"
@@ -14,8 +14,8 @@ type GetAllResponse struct {
 	Data []utils.KeyVal `json:"data"`
 }
 
-func GetAll(client gRPC.CmdExecutorClient, w http.ResponseWriter, r *http.Request) {
-	executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+func (gc *GRPCClient) GetAll(w http.ResponseWriter, r *http.Request) {
+	executeReply, err := (*gc.client).ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
 		Cmd: "getall",
 	})
 

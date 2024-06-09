@@ -1,4 +1,4 @@
-package application
+package handler
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 
 type AppendResponse utils.KeyValResponse
 
-func Append(client gRPC.CmdExecutorClient, w http.ResponseWriter, r *http.Request) {
+func (gc *GRPCClient) Append(w http.ResponseWriter, r *http.Request) {
 	var req utils.KeyVal
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -27,7 +27,7 @@ func Append(client gRPC.CmdExecutorClient, w http.ResponseWriter, r *http.Reques
 	}
 
 	// Append the new value
-	appendReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+	appendReply, err := (*gc.client).ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
 		Cmd:  "append",
 		Vals: []string{req.Key, req.Value},
 	})

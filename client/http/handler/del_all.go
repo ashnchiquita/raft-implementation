@@ -1,22 +1,19 @@
-package application
+package handler
 
 import (
 	"context"
 	"encoding/json"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"tubes.sister/raft/client/http/utils"
 	gRPC "tubes.sister/raft/gRPC/node/core"
 )
 
-type StrlenResponse utils.KeyValResponse
+type DelAllResponse utils.KeyValResponse
 
-func Strlen(client gRPC.CmdExecutorClient, w http.ResponseWriter, r *http.Request) {
-	key := chi.URLParam(r, "key")
-	executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
-		Cmd:  "strlen",
-		Vals: []string{key},
+func (gc *GRPCClient) DelAll(w http.ResponseWriter, r *http.Request) {
+	executeReply, err := (*gc.client).ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+		Cmd: "delall",
 	})
 
 	if err != nil {
@@ -24,12 +21,12 @@ func Strlen(client gRPC.CmdExecutorClient, w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	resp := StrlenResponse{
+	resp := DelAllResponse{
 		ResponseMessage: utils.ResponseMessage{
-			Message: "Strlen Success",
+			Message: "DelAll Success",
 		},
 		Data: utils.KeyVal{
-			Key:   key,
+			Key:   "",
 			Value: executeReply.Value,
 		},
 	}

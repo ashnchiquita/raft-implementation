@@ -1,4 +1,4 @@
-package application
+package handler
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 
 type SetResponse utils.KeyValResponse
 
-func Set(client gRPC.CmdExecutorClient, w http.ResponseWriter, r *http.Request) {
+func (gc *GRPCClient) Set(w http.ResponseWriter, r *http.Request) {
 	var kv utils.KeyVal
 	err := json.NewDecoder(r.Body).Decode(&kv)
 	if err != nil {
@@ -19,7 +19,7 @@ func Set(client gRPC.CmdExecutorClient, w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+	executeReply, err := (*gc.client).ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
 		Cmd:  "set",
 		Vals: []string{kv.Key, kv.Value},
 	})

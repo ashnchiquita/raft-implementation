@@ -1,4 +1,4 @@
-package cluster
+package handler
 
 import (
 	"encoding/json"
@@ -12,7 +12,7 @@ type PingResponse struct {
 	Data string `json:"data"`
 }
 
-func Ping(w http.ResponseWriter, r *http.Request) {
+func (gc *GRPCClient) Ping(w http.ResponseWriter, r *http.Request) {
 	// TODO: ping server
 
 	resp := PingResponse{

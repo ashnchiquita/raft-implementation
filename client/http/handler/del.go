@@ -1,4 +1,4 @@
-package application
+package handler
 
 import (
 	"context"
@@ -12,9 +12,9 @@ import (
 
 type DeleteResponse utils.KeyValResponse
 
-func Delete(client gRPC.CmdExecutorClient, w http.ResponseWriter, r *http.Request) {
+func (gc *GRPCClient) Delete(w http.ResponseWriter, r *http.Request) {
 	key := chi.URLParam(r, "key")
-	executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+	executeReply, err := (*gc.client).ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
 		Cmd:  "del",
 		Vals: []string{key},
 	})
