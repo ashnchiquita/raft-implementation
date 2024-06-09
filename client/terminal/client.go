@@ -43,6 +43,7 @@ func validateInput(splitted []string) error {
 		"append": 3,
 		"getall": 1,
 		"delall": 1,
+		"log": 1,
 		"exit":   1,
 	}
 
@@ -91,85 +92,14 @@ func (tc *TerminalClient) Start() {
 			break
 		}
 
-		switch splitted[0] {
-		case "get":
-			fmt.Println("command", input, "called")
-			executeReply, err := tc.client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
-				Cmd:  "get",
-				Vals: splitted[1:],
-			})
-			if err != nil {
-				log.Printf("Error executing command: %v", err)
-			} else {
-				log.Printf("ExecuteReply: %v", executeReply.Value)
-			}
-		case "set":
-			fmt.Println("command", input, "called")
-			executeReply, err := tc.client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
-				Cmd:  "set",
-				Vals: splitted[1:],
-			})
-			if err != nil {
-				log.Printf("Error executing command: %v", err)
-			}
-
-			log.Printf("ExecuteReply: %v", executeReply.Value)
-		case "strlen":
-			fmt.Println("command", input, "called")
-			executeReply, err := tc.client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
-				Cmd:  "strlen",
-				Vals: splitted[1:],
-			})
-			if err != nil {
-				log.Printf("Error executing command: %v", err)
-			} else {
-				log.Printf("ExecuteReply: %v", executeReply.Value)
-			}
-
-		case "del":
-			fmt.Println("command", input, "called")
-			executeReply, err := tc.client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
-				Cmd:  "del",
-				Vals: splitted[1:],
-			})
-			if err != nil {
-				log.Printf("Error executing command: %v", err)
-			} else {
-				log.Printf("ExecuteReply: %v", executeReply.Value)
-			}
-		case "append":
-			fmt.Println("command", input, "called")
-			executeReply, err := tc.client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
-				Cmd:  "append",
-				Vals: splitted[1:],
-			})
-			if err != nil {
-				log.Printf("Error executing command: %v", err)
-			} else {
-				log.Printf("ExecuteReply: %v", executeReply.Value)
-			}
-		case "getall":
-			fmt.Println("command", input, "called")
-			executeReply, err := tc.client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
-				Cmd:  "getall",
-				Vals: splitted[1:],
-			})
-			if err != nil {
-				log.Printf("Error executing command: %v", err)
-			} else {
-				log.Printf("ExecuteReply: %v", executeReply.Value)
-			}
-		case "delall":
-			fmt.Println("command", input, "called")
-			executeReply, err := tc.client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
-				Cmd:  "delall",
-				Vals: splitted[1:],
-			})
-			if err != nil {
-				log.Printf("Error executing command: %v", err)
-			} else {
-				log.Printf("ExecuteReply: %v", executeReply.Value)
-			}
+		executeReply, err := tc.client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+			Cmd:  splitted[0],
+			Vals: splitted[1:],
+		})
+		if err != nil {
+			fmt.Printf("Error executing command: %v\n", err)
+		} else {
+			fmt.Printf("ExecuteReply: %v\n", executeReply.Value)
 		}
 	}
 }
