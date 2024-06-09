@@ -52,6 +52,14 @@ func validateInput(splitted []string) error {
 		return fmt.Errorf("invalid number of arguments")
 	}
 
+	if splitted[0] == "set" || splitted[0] == "append" {
+		for _, arg := range splitted[1:] {
+			if strings.TrimSpace(arg) == "" {
+				return fmt.Errorf("%s command have to have valid key and value", splitted[0])
+			}
+		}
+	}
+
 	return nil
 }
 
