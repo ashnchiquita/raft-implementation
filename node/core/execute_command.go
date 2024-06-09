@@ -13,13 +13,13 @@ import (
 	"tubes.sister/raft/node/data"
 )
 
-func (rn *RaftNode) getLeaderClient() (gRPC.CmdExecutorClient, error) {
+func (rn *RaftNode) getLeaderClient() (gRPC.CmdExecutorClient, *grpc.ClientConn, error) {
 	leaderAddr := rn.Volatile.LeaderAddress
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	conn, err := grpc.NewClient(leaderAddr.String(), opts...)
 	client := gRPC.NewCmdExecutorClient(conn)
-	return client, err
+	return client, conn, err
 }
 
 func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC.ExecuteRes, error) {
@@ -32,7 +32,8 @@ func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC
 			log.Printf("Try again later! No leader available.")
 			return &gRPC.ExecuteRes{Success: false}, nil
 		} else {
-			leaderClient, err := rn.getLeaderClient()
+			leaderClient, leaderConn, err := rn.getLeaderClient()
+			defer leaderConn.Close()
 			if err != nil {
 				log.Printf("Error executing command: %v", err)
 			} else {
