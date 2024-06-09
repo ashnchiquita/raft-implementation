@@ -1,0 +1,257 @@
+definitions:
+  handler.AppendRequest:
+    properties:
+      key:
+        type: string
+      value:
+        type: string
+    type: object
+  handler.AppendResponse:
+    properties:
+      data:
+        $ref: '#/definitions/utils.KeyVal'
+      message:
+        type: string
+    type: object
+  handler.DeleteResponse:
+    properties:
+      data:
+        $ref: '#/definitions/utils.KeyVal'
+      message:
+        type: string
+    type: object
+  handler.GetAllResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/utils.KeyVal'
+        type: array
+      message:
+        type: string
+    type: object
+  handler.GetResponse:
+    properties:
+      data:
+        $ref: '#/definitions/utils.KeyVal'
+      message:
+        type: string
+    type: object
+  handler.PingResponse:
+    properties:
+      data:
+        type: string
+      message:
+        type: string
+    type: object
+  handler.SetRequest:
+    properties:
+      key:
+        type: string
+      value:
+        type: string
+    type: object
+  handler.SetResponse:
+    properties:
+      data:
+        $ref: '#/definitions/utils.KeyVal'
+      message:
+        type: string
+    type: object
+  handler.StrlenResponse:
+    properties:
+      data:
+        type: integer
+      message:
+        type: string
+    type: object
+  utils.KeyVal:
+    properties:
+      key:
+        type: string
+      value:
+        type: string
+    type: object
+  utils.ResponseMessage:
+    properties:
+      message:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: This is the API documentation for the web client of the application.
+  title: Web Client API
+  version: "1.0"
+paths:
+  /app:
+    delete:
+      operationId: delete-all
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ResponseMessage'
+      summary: Delete all key-value pairs
+      tags:
+      - application
+    get:
+      operationId: get-all
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.GetAllResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ResponseMessage'
+      summary: Get all key-value pairs
+      tags:
+      - application
+    patch:
+      consumes:
+      - application/json
+      operationId: append-value-to-key
+      parameters:
+      - description: Key and value to append
+        in: body
+        name: key
+        required: true
+        schema:
+          $ref: '#/definitions/handler.AppendRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.AppendResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ResponseMessage'
+      summary: Append value to key
+      tags:
+      - application
+    put:
+      consumes:
+      - application/json
+      operationId: set-value-to-key
+      parameters:
+      - description: Key and value to set
+        in: body
+        name: key
+        required: true
+        schema:
+          $ref: '#/definitions/handler.SetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.SetResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ResponseMessage'
+      summary: Set value to key
+      tags:
+      - application
+  /app/{key}:
+    delete:
+      operationId: delete-value-by-key
+      parameters:
+      - description: Key to delete
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.DeleteResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ResponseMessage'
+      summary: Delete value by key
+      tags:
+      - application
+    get:
+      operationId: get-value-by-key
+      parameters:
+      - description: Key to get
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.GetResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ResponseMessage'
+      summary: Get value by key
+      tags:
+      - application
+  /app/{key}/strlen:
+    get:
+      operationId: get-value-string-length-by-key
+      parameters:
+      - description: Key to get
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.StrlenResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ResponseMessage'
+      summary: Get value string length by key
+      tags:
+      - application
+  /cluster/ping:
+    get:
+      operationId: ping-cluster
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.PingResponse'
+      summary: Ping cluster
+      tags:
+      - cluster
+swagger: "2.0"
