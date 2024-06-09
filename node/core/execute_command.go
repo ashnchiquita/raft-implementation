@@ -44,7 +44,7 @@ func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC
 	}
 
 	switch msg.Cmd {
-	case "set":
+	case "set": // write
 		newLog := data.NewLogEntry(rn.Persistence.CurrentTerm, "SET", data.WithValue(fmt.Sprintf("%s,%s", msg.Vals[0], msg.Vals[1])))
 		rn.Persistence.Log = append(rn.Persistence.Log, *newLog)
 		rn.Persistence.Serialize()
@@ -53,34 +53,44 @@ func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC
 			continue
 		}
 
-		rn.Application.Set(msg.Vals[0], msg.Vals[1])
 		return &gRPC.ExecuteRes{Success: true, Value: "OK"}, nil
-	case "get":
+	case "get": // read
 		value, ok := rn.Application.Get(msg.Vals[0])
 		if !ok {
 			return &gRPC.ExecuteRes{Success: false, Value: ""}, nil
 		}
 		return &gRPC.ExecuteRes{Success: true, Value: value}, nil
-	case "strlen":
+	case "strlen": // read
 		length, ok := rn.Application.Strlen(msg.Vals[0])
 		if !ok {
 			return &gRPC.ExecuteRes{Success: false, Value: "0"}, nil
 		}
 		return &gRPC.ExecuteRes{Success: true, Value: strconv.Itoa(length)}, nil
-	case "del":
-		newLog := data.NewLogEntry(rn.Persistence.CurrentTerm, "del", data.WithValue(msg.Vals[0]))
-		rn.Persistence.Log = append(rn.Persistence.Log, *newLog)
-		value, ok := rn.Application.Del(msg.Vals[0])
+	case "del": // write
+		value, ok := rn.Application.Get(msg.Vals[0])
 		if !ok {
 			return &gRPC.ExecuteRes{Success: false, Value: "Key does not exist"}, nil
 		}
-		return &gRPC.ExecuteRes{Success: true, Value: value}, nil
-	case "append":
-		newLog := data.NewLogEntry(rn.Persistence.CurrentTerm, "append", data.WithValue(fmt.Sprintf("%s,%s", msg.Vals[0], msg.Vals[1])))
+		newLog := data.NewLogEntry(rn.Persistence.CurrentTerm, "DEL", data.WithValue(msg.Vals[0]))
 		rn.Persistence.Log = append(rn.Persistence.Log, *newLog)
-		rn.Application.Append(msg.Vals[0], msg.Vals[1])
+		rn.Persistence.Serialize()
+
+		for rn.Volatile.CommitIndex < len(rn.Persistence.Log)-1 {
+			continue
+		}
+
+		return &gRPC.ExecuteRes{Success: true, Value: value}, nil
+	case "append": // write
+		newLog := data.NewLogEntry(rn.Persistence.CurrentTerm, "APPEND", data.WithValue(fmt.Sprintf("%s,%s", msg.Vals[0], msg.Vals[1])))
+		rn.Persistence.Log = append(rn.Persistence.Log, *newLog)
+		rn.Persistence.Serialize()
+
+		for rn.Volatile.CommitIndex < len(rn.Persistence.Log)-1 {
+			continue
+		}
+
 		return &gRPC.ExecuteRes{Success: true, Value: "OK"}, nil
-	case "getall":
+	case "getall": // read
 		allData := rn.Application.GetAll()
 		kvPairs := make([]map[string]string, 0, len(allData))
 		for key, value := range allData {
@@ -91,10 +101,15 @@ func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC
 			return nil, err
 		}
 		return &gRPC.ExecuteRes{Success: true, Value: string(kvPairsJson)}, nil
-	case "delall":
-		newLog := data.NewLogEntry(rn.Persistence.CurrentTerm, "delall")
+	case "delall": // write
+		newLog := data.NewLogEntry(rn.Persistence.CurrentTerm, "DELALL")
 		rn.Persistence.Log = append(rn.Persistence.Log, *newLog)
-		rn.Application.DelAll()
+		rn.Persistence.Serialize()
+
+		for rn.Volatile.CommitIndex < len(rn.Persistence.Log)-1 {
+			continue
+		}
+
 		return &gRPC.ExecuteRes{Success: true, Value: "OK"}, nil
 	case "config":
 		rn.LeaderEnterJointConsensus(msg.Vals[0])
