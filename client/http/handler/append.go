@@ -12,7 +12,6 @@ import (
 )
 
 type AppendRequest utils.KeyVal
-type AppendResponse utils.KeyValResponse
 
 // @Summary Append value to key
 // @ID append-value-to-key
@@ -20,7 +19,7 @@ type AppendResponse utils.KeyValResponse
 // @Accept       json
 // @Produce      json
 // @Param key body AppendRequest true "Key and value to append"
-// @Success 200 {object} AppendResponse
+// @Success 200 {object} utils.ResponseMessage
 // @Failure 400 {object} utils.ResponseMessage
 // @Failure 500 {object} utils.ResponseMessage
 // @Router /app [patch]
@@ -47,23 +46,12 @@ func (gc *GRPCClient) Append(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := AppendResponse{
-		ResponseMessage: utils.ResponseMessage{
-			Message: "Append Success",
-		},
-		Data: utils.KeyVal{
-			Key:   appendReq.Key,
-			Value: appendReply.Value,
-		},
-	}
-
-	respBytes, err := json.Marshal(resp)
-	if err != nil {
-		log.Println(errMsg + ": " + err.Error())
+	if !appendReply.Success {
+		log.Println(errMsg + ": " + appendReply.Value)
 		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(respBytes)
+	msg := "Append Success"
+	utils.SendResponseMessage(w, msg, http.StatusOK)
 }

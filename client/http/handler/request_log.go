@@ -36,6 +36,12 @@ func (gc *GRPCClient) RequestLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !executeReply.Success {
+		log.Println(errMsg + ": " + executeReply.Value)
+		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
+		return
+	}
+
 	var data []data.LogEntry
 	err = json.Unmarshal([]byte(executeReply.Value), &data)
 	if err != nil {

@@ -47,23 +47,12 @@ func (gc *GRPCClient) Set(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := SetResponse{
-		ResponseMessage: utils.ResponseMessage{
-			Message: "Set Success",
-		},
-		Data: utils.KeyVal{
-			Key:   setReq.Key,
-			Value: executeReply.Value,
-		},
-	}
-
-	respBytes, err := json.Marshal(resp)
-	if err != nil {
-		log.Println(errMsg + ": " + err.Error())
+	if !executeReply.Success {
+		log.Println(errMsg + ": " + executeReply.Value)
 		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(respBytes)
+	msg := "Set Success"
+	utils.SendResponseMessage(w, msg, http.StatusOK)
 }

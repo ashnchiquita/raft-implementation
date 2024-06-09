@@ -16,13 +16,6 @@ definitions:
       value:
         type: string
     type: object
-  handler.AppendResponse:
-    properties:
-      data:
-        $ref: '#/definitions/utils.KeyVal'
-      message:
-        type: string
-    type: object
   handler.DeleteResponse:
     properties:
       data:
@@ -151,7 +144,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handler.AppendResponse'
+            $ref: '#/definitions/utils.ResponseMessage'
         "400":
           description: Bad Request
           schema:

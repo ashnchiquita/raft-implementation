@@ -35,6 +35,12 @@ func (gc *GRPCClient) GetAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !executeReply.Success {
+		log.Println(errMsg + ": " + executeReply.Value)
+		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
+		return
+	}
+
 	var data []utils.KeyVal
 	err = json.Unmarshal([]byte(executeReply.Value), &data)
 	if err != nil {

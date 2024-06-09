@@ -35,6 +35,12 @@ func (gc *GRPCClient) Ping(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !executeReply.Success {
+		log.Println(errMsg + ": " + executeReply.Value)
+		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
+		return
+	}
+
 	resp := PingResponse{
 		ResponseMessage: utils.ResponseMessage{
 			Message: "success",

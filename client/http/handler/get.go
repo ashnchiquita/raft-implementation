@@ -36,6 +36,12 @@ func (gc *GRPCClient) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !executeReply.Success {
+		log.Println(errMsg + ": " + executeReply.Value)
+		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
+		return
+	}
+
 	resp := GetResponse{
 		ResponseMessage: utils.ResponseMessage{
 			Message: "Get Success",
