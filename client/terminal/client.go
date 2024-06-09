@@ -14,7 +14,8 @@ import (
 )
 
 type TerminalClient struct {
-	conn *grpc.ClientConn
+	conn   *grpc.ClientConn
+	client gRPC.CmdExecutorClient
 }
 
 func NewTerminalClient(clientPort int, serverAddr string) *TerminalClient {
@@ -27,7 +28,9 @@ func NewTerminalClient(clientPort int, serverAddr string) *TerminalClient {
 		log.Fatalf("Failed to dial server: %v", err)
 	}
 
-	return &TerminalClient{conn: conn}
+	client := gRPC.NewCmdExecutorClient(conn)
+
+	return &TerminalClient{conn: conn, client: client}
 }
 
 func validateInput(splitted []string) error {
@@ -88,14 +91,10 @@ func (tc *TerminalClient) Start() {
 			break
 		}
 
-		// TODO: Determine whether creating a new client for each command input is better
-		// TODO: than creating a single client as attribute to TerminalClient
-		client := gRPC.NewCmdExecutorClient(tc.conn)
-
 		switch splitted[0] {
 		case "get":
 			fmt.Println("command", input, "called")
-			executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+			executeReply, err := tc.client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
 				Cmd:  "get",
 				Vals: splitted[1:],
 			})
@@ -106,7 +105,7 @@ func (tc *TerminalClient) Start() {
 			}
 		case "set":
 			fmt.Println("command", input, "called")
-			executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+			executeReply, err := tc.client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
 				Cmd:  "set",
 				Vals: splitted[1:],
 			})
@@ -117,7 +116,7 @@ func (tc *TerminalClient) Start() {
 			log.Printf("ExecuteReply: %v", executeReply.Value)
 		case "strlen":
 			fmt.Println("command", input, "called")
-			executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+			executeReply, err := tc.client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
 				Cmd:  "strlen",
 				Vals: splitted[1:],
 			})
@@ -129,7 +128,7 @@ func (tc *TerminalClient) Start() {
 
 		case "del":
 			fmt.Println("command", input, "called")
-			executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+			executeReply, err := tc.client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
 				Cmd:  "del",
 				Vals: splitted[1:],
 			})
@@ -140,7 +139,7 @@ func (tc *TerminalClient) Start() {
 			}
 		case "append":
 			fmt.Println("command", input, "called")
-			executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+			executeReply, err := tc.client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
 				Cmd:  "append",
 				Vals: splitted[1:],
 			})
@@ -151,7 +150,7 @@ func (tc *TerminalClient) Start() {
 			}
 		case "getall":
 			fmt.Println("command", input, "called")
-			executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+			executeReply, err := tc.client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
 				Cmd:  "getall",
 				Vals: splitted[1:],
 			})
@@ -162,7 +161,7 @@ func (tc *TerminalClient) Start() {
 			}
 		case "delall":
 			fmt.Println("command", input, "called")
-			executeReply, err := client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+			executeReply, err := tc.client.ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
 				Cmd:  "delall",
 				Vals: splitted[1:],
 			})
