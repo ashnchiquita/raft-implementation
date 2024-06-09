@@ -40,6 +40,12 @@ func (gc *GRPCClient) Strlen(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !executeReply.Success {
+		log.Println(errMsg + ": " + executeReply.Value)
+		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
+		return
+	}
+
 	valLen, err := strconv.Atoi(executeReply.Value)
 	if err != nil {
 		log.Println(errMsg + ": " + err.Error())

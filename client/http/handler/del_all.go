@@ -17,13 +17,19 @@ import (
 // @Failure 500 {object} utils.ResponseMessage
 // @Router /app [delete]
 func (gc *GRPCClient) DelAll(w http.ResponseWriter, r *http.Request) {
-	_, err := (*gc.client).ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
+	executeReply, err := (*gc.client).ExecuteCmd(context.Background(), &gRPC.ExecuteMsg{
 		Cmd: "delall",
 	})
 
+	errMsg := "Failed to delete all key-value pairs"
 	if err != nil {
-		errMsg := "Failed to delete all key-value pairs"
 		log.Println(errMsg + ": " + err.Error())
+		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
+		return
+	}
+
+	if !executeReply.Success {
+		log.Println(errMsg + ": " + executeReply.Value)
 		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
 		return
 	}

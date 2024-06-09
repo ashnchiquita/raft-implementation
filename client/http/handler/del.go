@@ -36,6 +36,12 @@ func (gc *GRPCClient) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !executeReply.Success {
+		log.Println(errMsg + ": " + executeReply.Value)
+		utils.SendResponseMessage(w, errMsg, http.StatusInternalServerError)
+		return
+	}
+
 	resp := GetResponse{
 		ResponseMessage: utils.ResponseMessage{
 			Message: "Delete Success",
