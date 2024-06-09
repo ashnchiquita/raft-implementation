@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"log"
 	"strings"
 
 	gRPC "tubes.sister/raft/gRPC/node/core"
@@ -78,7 +77,7 @@ func (rn *RaftNode) AppendEntries(ctx context.Context, args *gRPC.AppendEntriesA
 		splitRes := strings.Split(currentEntry.Value, ",")
 		key := splitRes[0]
 
-		log.Printf(Purple+"AppendEntries >> "+Reset+"Received log command: %s; value: %s", currentEntry.Command, currentEntry.Value)
+		rn.logf(Purple+"AppendEntries >> "+Reset+"Received log command: %s; value: %s", currentEntry.Command, currentEntry.Value)
 
 		switch command {
 		case "APPEND":

@@ -9,7 +9,7 @@ import (
 )
 
 func (rn *RaftNode) LeaderEnterJointConsensus(marshalledNew string) error {
-	log.Printf("Memcange >> Leader is entering joint consensus; newconfig: %s", marshalledNew)
+	rn.logf(Purple+"Memchange >> "+Reset+"Leader is entering joint consensus; newconfig: %s", marshalledNew)
 	newConfig, err := data.UnmarshallConfiguration(marshalledNew)
 
 	if err != nil {
@@ -43,7 +43,7 @@ func (rn *RaftNode) LeaderEnterJointConsensus(marshalledNew string) error {
 }
 
 func (rn *RaftNode) FollowerEnterJointConsensus(marshalledOldNew string) error {
-	log.Printf("Memcange >> Follower is entering joint consensus; oldnewconfig: %s", marshalledOldNew)
+	rn.logf(Purple+"Memchange >> "+Reset+"Follower is entering joint consensus; oldnewconfig: %s", marshalledOldNew)
 
 	oldNewConfig, err := data.NewOldConfigPayloadFromJson(marshalledOldNew)
 
@@ -69,7 +69,7 @@ func (rn *RaftNode) FollowerEnterJointConsensus(marshalledOldNew string) error {
 }
 
 func (rn *RaftNode) ApplyNewClusterList(marshalledNew string) error {
-	log.Printf("Memcange >> Applying new config: %s", marshalledNew)
+	rn.logf(Purple+"Memchange >> "+Reset+"Applying new config: %s", marshalledNew)
 	newAddressList, err := data.UnmarshallConfiguration(marshalledNew)
 
 	if err != nil {

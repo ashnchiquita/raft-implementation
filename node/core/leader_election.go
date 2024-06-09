@@ -44,7 +44,7 @@ func (rn *RaftNode) startElection() {
 
 	go rn.election(restartElection)
 	for <-restartElection {
-		log.Println("startElection() >> Restarting election because of timeout")
+		rn.logf(Yellow + "startElection() >>" + Reset + "Restarting election because of timeout")
 		go rn.election(restartElection)
 	}
 }

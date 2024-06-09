@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strconv"
 
 	"google.golang.org/grpc"
@@ -23,21 +22,21 @@ func (rn *RaftNode) getLeaderClient() (gRPC.CmdExecutorClient, *grpc.ClientConn,
 }
 
 func (rn *RaftNode) ExecuteCmd(ctx context.Context, msg *gRPC.ExecuteMsg) (*gRPC.ExecuteRes, error) {
-	log.Printf("Received command: %v", msg.Cmd)
+	rn.logf("Received command: %v", msg.Cmd)
 
 	if rn.Volatile.Type != data.LEADER {
 		// Forward request to leader
 		leaderAddr := rn.Volatile.LeaderAddress
 		if leaderAddr.IsZeroAddress() {
-			log.Printf("Try again later! No leader available.")
+			rn.announcef("Try again later! No leader available.")
 			return &gRPC.ExecuteRes{Success: false}, nil
 		} else {
 			leaderClient, leaderConn, err := rn.getLeaderClient()
 			defer leaderConn.Close()
 			if err != nil {
-				log.Printf("Error executing command: %v", err)
+				rn.logf("Error executing command: %v", err)
 			} else {
-				log.Printf("Successfully connected to leader")
+				rn.logf("Successfully connected to leader")
 				return leaderClient.ExecuteCmd(ctx, msg)
 			}
 		}
