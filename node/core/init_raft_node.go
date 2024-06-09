@@ -54,7 +54,7 @@ func (rn *RaftNode) startTimerLoop() {
 		prev = now
 
 		// !: For testing only, remove these lines when timeout handling has been implemented
-		log.Printf("Current timeout: %v", rn.timeout.Value)
+		// log.Printf("Current timeout: %v", rn.timeout.Value)
 		time.Sleep(500 * time.Millisecond)
 
 		if rn.timeout.Value <= 0 {
