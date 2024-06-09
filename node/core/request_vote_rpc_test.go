@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"testing"
 
 	gRPC "tubes.sister/raft/gRPC/node/core"
@@ -79,7 +80,7 @@ func TestRequestVote(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := rn.RequestVote(tt.args)
+			got, err := rn.RequestVote(context.Background(), tt.args)
 			if err != nil {
 				t.Fatalf("RequestVote() error = %v", err)
 			}
