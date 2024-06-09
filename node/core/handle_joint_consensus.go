@@ -20,11 +20,27 @@ func (rn *RaftNode) LeaderEnterJointConsensus(marshalledNew string) error {
 	rn.Volatile.NewConfig = newConfig
 
 	data.DisconnectClusterList(rn.Volatile.ClusterList)
+
+	clusterDataMap := make(map[data.Address]data.ClusterData)
+
+	for idx, clusterData := range rn.Volatile.ClusterList {
+		clusterDataMap[clusterData.Address] = rn.Volatile.ClusterList[idx]
+	}
+
 	rn.Volatile.ClusterList = data.ClusterListFromAddresses(
 		data.UnionAddressList(
 			rn.Volatile.NewConfig,
 			rn.Volatile.OldConfig),
 		len(rn.Persistence.Log))
+
+	for idx, node := range rn.Volatile.ClusterList {
+		if _, ok := clusterDataMap[node.Address]; !ok {
+			continue
+		}
+
+		rn.Volatile.ClusterList[idx].MatchIndex = clusterDataMap[node.Address].MatchIndex
+		rn.Volatile.ClusterList[idx].NextIndex = clusterDataMap[node.Address].NextIndex
+	}
 
 	payload := data.OldNewConfigPayload{New: rn.Volatile.NewConfig, Old: rn.Volatile.OldConfig}
 	marshalledOldNew, err := payload.Marshall()
@@ -56,12 +72,27 @@ func (rn *RaftNode) FollowerEnterJointConsensus(marshalledOldNew string) error {
 	rn.Volatile.OldConfig = oldNewConfig.Old
 	rn.Volatile.NewConfig = oldNewConfig.New
 
+	clusterDataMap := make(map[data.Address]data.ClusterData)
+
+	for idx, clusterData := range rn.Volatile.ClusterList {
+		clusterDataMap[clusterData.Address] = rn.Volatile.ClusterList[idx]
+	}
+
 	data.DisconnectClusterList(rn.Volatile.ClusterList)
 	rn.Volatile.ClusterList = data.ClusterListFromAddresses(
 		data.UnionAddressList(
 			rn.Volatile.OldConfig,
 			rn.Volatile.NewConfig),
 		len(rn.Persistence.Log))
+
+	for idx, node := range rn.Volatile.ClusterList {
+		if _, ok := clusterDataMap[node.Address]; !ok {
+			continue
+		}
+
+		rn.Volatile.ClusterList[idx].MatchIndex = clusterDataMap[node.Address].MatchIndex
+		rn.Volatile.ClusterList[idx].NextIndex = clusterDataMap[node.Address].NextIndex
+	}
 
 	rn.Volatile.IsJointConsensus = true
 
@@ -78,12 +109,27 @@ func (rn *RaftNode) ApplyNewClusterList(marshalledNew string) error {
 
 	newClusterList := data.ClusterListFromAddresses(newAddressList, len(rn.Persistence.Log))
 
+	clusterDataMap := make(map[data.Address]data.ClusterData)
+
 	rn.Volatile.OldConfig = nil
 	rn.Volatile.NewConfig = nil
+
+	for idx, clusterData := range rn.Volatile.ClusterList {
+		clusterDataMap[clusterData.Address] = rn.Volatile.ClusterList[idx]
+	}
 
 	data.DisconnectClusterList(rn.Volatile.ClusterList)
 	rn.Volatile.ClusterList = newClusterList
 	rn.Volatile.IsJointConsensus = false
+
+	for idx, node := range rn.Volatile.ClusterList {
+		if _, ok := clusterDataMap[node.Address]; !ok {
+			continue
+		}
+
+		rn.Volatile.ClusterList[idx].MatchIndex = clusterDataMap[node.Address].MatchIndex
+		rn.Volatile.ClusterList[idx].NextIndex = clusterDataMap[node.Address].NextIndex
+	}
 
 	return nil
 }
