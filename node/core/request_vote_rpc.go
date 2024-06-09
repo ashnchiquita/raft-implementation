@@ -71,6 +71,10 @@ func (rn *RaftNode) RequestVote(ctx context.Context, args *gRPC.RequestVoteArgs)
 	}
 
 	reply.Term = int32(currTerm)
+
+	// Persist after accepting vote request
+	rn.Persistence.Serialize()
+
 	return reply, nil
 }
 

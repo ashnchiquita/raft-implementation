@@ -72,6 +72,9 @@ func (rn *RaftNode) election(restartElection chan bool) {
 		lastIndex:        len(rn.Persistence.Log) - 1,
 	}
 
+	// Persist before requesting votes
+	rn.Persistence.Serialize()
+
 	for _, node := range rn.Volatile.ClusterList {
 		if node.Address == rn.Address {
 			continue
